@@ -1,6 +1,7 @@
+import { Suspense } from "react";
 import { login } from "@/actions/auth";
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: PageProps<"/">) {
   return (
     <main className="flex flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-black">
       <form
@@ -13,16 +14,16 @@ export default function LoginPage() {
 
         <div className="flex flex-col gap-1.5">
           <label
-            htmlFor="username"
+            htmlFor="email"
             className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
           >
-            Username
+            Email
           </label>
           <input
-            id="username"
-            name="username"
-            type="text"
-            autoComplete="username"
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
             required
             className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-zinc-900 outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-300 dark:focus:ring-zinc-300/20"
           />
@@ -45,6 +46,10 @@ export default function LoginPage() {
           />
         </div>
 
+        <Suspense>
+          <ErrorMessage searchParams={searchParams} />
+        </Suspense>
+
         <button
           type="submit"
           className="h-11 rounded-lg bg-zinc-900 font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -53,5 +58,21 @@ export default function LoginPage() {
         </button>
       </form>
     </main>
+  );
+}
+
+// Shows the error from the URL (/?message=...) after a failed sign-in.
+async function ErrorMessage({
+  searchParams,
+}: {
+  searchParams: PageProps<"/">["searchParams"];
+}) {
+  const { message } = await searchParams;
+  if (typeof message !== "string") return null;
+
+  return (
+    <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+      {message}
+    </p>
   );
 }
