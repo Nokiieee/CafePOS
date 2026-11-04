@@ -1,6 +1,7 @@
 import { Suspense } from "react";
+import { AccountMenu } from "@/components/pos/account-menu";
 import { PosScreen } from "@/components/pos/pos-screen";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getDisplayName } from "@/lib/auth";
 
 export default function DashboardPage() {
   return (
@@ -21,10 +22,5 @@ export default function DashboardPage() {
 async function SignedInAs() {
   const user = await getCurrentUser();
 
-  return (
-    <p className="truncate text-sm text-roast-500">
-      Signed in as{" "}
-      <span className="font-medium text-espresso-900">{user.email}</span>
-    </p>
-  );
+  return <AccountMenu name={getDisplayName(user)} />;
 }

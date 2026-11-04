@@ -1,7 +1,6 @@
 "use client";
 
-import { PiCoffeeBeanFill, PiSignOut } from "react-icons/pi";
-import { logout } from "@/actions/auth";
+import { PiCoffeeBeanFill } from "react-icons/pi";
 import { categories } from "./categories";
 
 // Tile size and gap, in px. The puck's position is calculated from these.
@@ -64,16 +63,6 @@ export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
           })}
         </ul>
       </nav>
-
-      <form action={logout}>
-        <button
-          type="submit"
-          className="flex w-20 flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-sm font-medium text-roast-500 transition-colors duration-200 outline-none hover:bg-latte-200 hover:text-espresso-800 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-latte-100 active:bg-latte-300"
-        >
-          <PiSignOut aria-hidden className="size-6" />
-          Sign out
-        </button>
-      </form>
     </aside>
   );
 }
