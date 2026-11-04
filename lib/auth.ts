@@ -1,5 +1,21 @@
+import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+
+// The name to show for a user: their display name from Supabase if one is set,
+// otherwise their email.
+export function getDisplayName(user: User): string {
+  const metadata = user.user_metadata ?? {};
+
+  for (const key of ["display_name", "full_name", "name"]) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return user.email ?? "Unknown user";
+}
 
 // Returns the signed-in user, or sends the visitor to the login page.
 // Call this in every page or action that needs a signed-in user.
