@@ -28,7 +28,7 @@ export function PosScreen({ account }: PosScreenProps) {
       <CategoryNav selectedId={selected.id} onSelect={setSelectedId} />
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-8 [scrollbar-color:var(--color-latte-300)_transparent] sm:px-10">
-        <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="flex items-baseline gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">
               {selected.id === "all" ? "All items" : selected.label}
