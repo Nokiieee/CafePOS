@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { LuCupSoda } from "react-icons/lu";
 import { PiMinusBold, PiPlusBold } from "react-icons/pi";
 import { MAX_QUANTITY, sizes, type SizeId } from "./item-options";
@@ -11,25 +11,31 @@ const PUCK_GLIDE =
   "pointer-events-none absolute transition-transform duration-500 ease-out-expo motion-reduce:transition-none";
 
 type OptionGroupProps = {
-  legend: string;
+  title: string;
   /** The current choice in words, shown at the right of the title. */
   value: string;
   children: ReactNode;
 };
 
-// A titled group of choices. Only the title is read out as the group's name,
-// because screen readers already announce the picked choice.
-export function OptionGroup({ legend, value, children }: OptionGroupProps) {
+// A titled group of choices. This is a plain <div> with role="radiogroup"
+// rather than <fieldset> and <legend>: with those, iPad Safari opened the
+// popup with an extra gap in each group, as tall as the title row.
+export function OptionGroup({ title, value, children }: OptionGroupProps) {
+  const titleId = useId();
+
   return (
-    <fieldset>
-      <legend className="mb-2.5 flex w-full items-baseline justify-between text-sm">
-        <span className="font-semibold text-espresso-900">{legend}</span>
+    <div role="radiogroup" aria-labelledby={titleId}>
+      <div className="mb-2.5 flex items-baseline justify-between text-sm">
+        <span id={titleId} className="font-semibold text-espresso-900">
+          {title}
+        </span>
+        {/* Hidden from screen readers: they already announce the picked radio. */}
         <span aria-hidden className="text-roast-500">
           {value}
         </span>
-      </legend>
+      </div>
       {children}
-    </fieldset>
+    </div>
   );
 }
 

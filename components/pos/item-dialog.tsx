@@ -134,10 +134,10 @@ function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps
 
         {isDrink && (
           <>
-            <OptionGroup legend="Size" value={sizeLabel}>
+            <OptionGroup title="Size" value={sizeLabel}>
               <SizeCards value={size} onChange={setSize} />
             </OptionGroup>
-            <OptionGroup legend="Ice" value={ice}>
+            <OptionGroup title="Ice" value={ice}>
               <SegmentedControl
                 name="ice"
                 value={ice}
@@ -145,7 +145,7 @@ function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps
                 options={iceLevels.map((level) => ({ value: level, label: level }))}
               />
             </OptionGroup>
-            <OptionGroup legend="Sugar" value={`${sugar}%`}>
+            <OptionGroup title="Sugar" value={`${sugar}%`}>
               <SegmentedControl
                 name="sugar"
                 value={sugar}
