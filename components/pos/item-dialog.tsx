@@ -56,7 +56,7 @@ export function ItemDialog({ item, onClose }: ItemDialogProps) {
       onClick={(event) => {
         if (event.target === event.currentTarget) event.currentTarget.close();
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-hidden rounded-3xl bg-white p-0 text-espresso-950 shadow-[0_24px_64px_-16px_rgb(42_24_16/0.45)] transition-[opacity,translate] duration-300 ease-out-expo backdrop:bg-espresso-950/40 motion-reduce:transition-none starting:open:translate-y-4 starting:open:opacity-0"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto overscroll-contain rounded-3xl bg-white p-0 text-espresso-950 shadow-[0_24px_64px_-16px_rgb(42_24_16/0.45)] transition-[opacity,translate] duration-300 ease-out-expo [scrollbar-color:var(--color-latte-300)_transparent] backdrop:bg-espresso-950/40 motion-reduce:transition-none starting:open:translate-y-4 starting:open:opacity-0"
     >
       {/* key={item.id} gives each item fresh choices every time it opens. */}
       {item && (
@@ -93,18 +93,21 @@ function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps
   const sizeLabel = sizes.find((s) => s.id === size)?.label ?? "";
 
   return (
-    // Only the middle scrolls, so Add to Billing is always on screen.
-    <div className="relative flex max-h-[calc(100dvh-2rem)] flex-col">
+    // Plain block layout, on purpose: the popup is exactly as tall as its
+    // content. A stretchy flex-1 middle left a blank gap below Sugar on iPad.
+    // When the screen is short the <dialog> scrolls, and sticky keeps the
+    // close button and Add to Billing on screen.
+    <>
       <button
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute top-3 right-3 z-10 flex size-11 items-center justify-center rounded-xl text-roast-500 transition-colors duration-200 outline-none hover:bg-latte-100 hover:text-espresso-900 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
+        className="sticky top-3 z-10 mt-3 mr-3 -mb-14 ml-auto flex size-11 items-center justify-center rounded-xl text-roast-500 transition-colors duration-200 outline-none hover:bg-latte-100 hover:text-espresso-900 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
       >
         <PiX aria-hidden className="size-6" />
       </button>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5 [scrollbar-color:var(--color-latte-300)_transparent] sm:p-7">
+      <div className="space-y-6 p-5 sm:p-7">
         {/* Photo with the name, description and price of one beside it. */}
         <div className="flex items-center gap-4 pr-8 sm:gap-5">
           <div className="relative size-24 shrink-0 rounded-2xl bg-white ring-1 ring-latte-200 sm:size-28">
@@ -157,7 +160,7 @@ function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 border-t border-latte-200 bg-milk px-5 py-4 sm:px-7">
+      <div className="sticky bottom-0 z-10 flex flex-wrap gap-3 border-t border-latte-200 bg-milk px-5 py-4 sm:px-7">
         <QuantityStepper value={quantity} onChange={setQuantity} />
 
         {/* Adding to the bill comes in the next step. */}
@@ -169,6 +172,6 @@ function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps
           <span className="tabular-nums">{formatPrice(total)}</span>
         </button>
       </div>
-    </div>
+    </>
   );
 }
