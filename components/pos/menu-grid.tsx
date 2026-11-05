@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { formatPrice } from "@/lib/format-price";
 import type { MenuItem } from "./menu-items";
 
 type MenuGridProps = {
@@ -23,9 +24,16 @@ export function MenuGrid({ items }: MenuGridProps) {
               className="object-contain p-2 mask-x-from-88% mask-x-to-100% mask-y-from-88% mask-y-to-100%"
             />
           </div>
-          <p className="px-4 pb-4 text-base leading-snug font-medium text-espresso-950">
-            {item.name}
-          </p>
+          {/* flex-1 + justify-between pins the price to the bottom, so prices
+              line up across a row even when a long name wraps to two lines. */}
+          <div className="flex flex-1 flex-col justify-between gap-1 px-4 pb-4">
+            <p className="text-base leading-snug font-medium text-espresso-950">
+              {item.name}
+            </p>
+            <p className="text-base font-semibold text-espresso-700 tabular-nums">
+              {formatPrice(item.price)}
+            </p>
+          </div>
         </li>
       ))}
     </ul>
