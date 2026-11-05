@@ -3,8 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { categories } from "./categories";
 import { CategoryNav } from "./category-nav";
+import { ItemDialog } from "./item-dialog";
 import { MenuGrid } from "./menu-grid";
-import { menuItems } from "./menu-items";
+import { menuItems, type MenuItem } from "./menu-items";
 
 type PosScreenProps = {
   /** Shown at the top right, e.g. who is signed in. Rendered on the server. */
@@ -13,6 +14,8 @@ type PosScreenProps = {
 
 export function PosScreen({ account }: PosScreenProps) {
   const [selectedId, setSelectedId] = useState(categories[0].id);
+  // The item whose options popup is open, or null when it's closed.
+  const [openItem, setOpenItem] = useState<MenuItem | null>(null);
   const selected =
     categories.find((category) => category.id === selectedId) ?? categories[0];
   const Icon = selected.icon;
@@ -42,7 +45,7 @@ export function PosScreen({ account }: PosScreenProps) {
         </header>
 
         {visibleItems.length > 0 ? (
-          <MenuGrid items={visibleItems} />
+          <MenuGrid items={visibleItems} onSelect={setOpenItem} />
         ) : (
           <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-latte-100 text-espresso-700">
@@ -62,6 +65,8 @@ export function PosScreen({ account }: PosScreenProps) {
           </section>
         )}
       </main>
+
+      <ItemDialog item={openItem} onClose={() => setOpenItem(null)} />
     </div>
   );
 }
