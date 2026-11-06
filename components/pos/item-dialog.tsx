@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { PiX } from "react-icons/pi";
 import { formatPrice } from "@/lib/format-price";
+import type { ItemChoice } from "./bill";
 import {
   defaultIce,
   defaultSize,
@@ -27,12 +28,14 @@ type ItemDialogProps = {
   item: MenuItem | null;
   /** Called after the popup closes, however it was closed. */
   onClose: () => void;
+  /** Called with the cashier's choices when Add to Billing is tapped. */
+  onAdd: (choice: ItemChoice) => void;
 };
 
 // The popup that opens when a menu card is tapped. It uses the browser's own
 // <dialog> element, which handles Escape, keeps focus inside, and blocks
 // taps on the page behind it.
-export function ItemDialog({ item, onClose }: ItemDialogProps) {
+export function ItemDialog({ item, onClose, onAdd }: ItemDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -72,6 +75,7 @@ export function ItemDialog({ item, onClose }: ItemDialogProps) {
             titleId={titleId}
             descriptionId={descriptionId}
             onClose={() => dialogRef.current?.close()}
+            onAdd={onAdd}
           />
         )}
       </div>
@@ -84,9 +88,10 @@ type ItemOptionsProps = {
   titleId: string;
   descriptionId: string;
   onClose: () => void;
+  onAdd: (choice: ItemChoice) => void;
 };
 
-function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps) {
+function ItemOptions({ item, titleId, descriptionId, onClose, onAdd }: ItemOptionsProps) {
   const isDrink = hasDrinkOptions(item);
   const [size, setSize] = useState(defaultSize);
   const [sugar, setSugar] = useState(defaultSugar);
@@ -170,9 +175,12 @@ function ItemOptions({ item, titleId, descriptionId, onClose }: ItemOptionsProps
       <div className="sticky bottom-0 z-10 flex flex-wrap gap-3 border-t border-latte-200 bg-milk px-5 py-4 sm:px-7">
         <QuantityStepper value={quantity} onChange={setQuantity} />
 
-        {/* Adding to the bill comes in the next step. */}
         <button
           type="button"
+          onClick={() => {
+            onAdd({ item, size, sugar, ice, quantity });
+            onClose();
+          }}
           className="flex h-14 flex-1 basis-52 items-center justify-between gap-3 rounded-2xl bg-espresso-700 px-5 text-lg font-semibold whitespace-nowrap text-milk transition-colors duration-200 outline-none hover:bg-espresso-800 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk active:bg-espresso-900"
         >
           Add to Billing

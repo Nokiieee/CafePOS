@@ -10,7 +10,7 @@ type MenuGridProps = {
 
 export function MenuGrid({ items, onSelect }: MenuGridProps) {
   return (
-    <ul className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4">
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-4">
       {items.map((item) => (
         <li key={item.id} className="flex">
           {/* The whole card is one button, so it's easy to tap and works with the keyboard. */}
@@ -26,7 +26,7 @@ export function MenuGrid({ items, onSelect }: MenuGridProps) {
                 src={item.image}
                 alt=""
                 fill
-                sizes="(min-width: 1280px) 15vw, (min-width: 768px) 22vw, 45vw"
+                sizes="(min-width: 768px) 200px, 45vw"
                 className="object-contain p-2 mask-x-from-88% mask-x-to-100% mask-y-from-88% mask-y-to-100%"
               />
             </span>
