@@ -34,6 +34,7 @@ type ItemDialogProps = {
 // taps on the page behind it.
 export function ItemDialog({ item, onClose }: ItemDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
 
@@ -42,6 +43,9 @@ export function ItemDialog({ item, onClose }: ItemDialogProps) {
     const dialog = dialogRef.current;
     if (item && dialog && !dialog.open) {
       dialog.showModal();
+      // showModal() focuses the first button, the X, and Safari then draws its
+      // focus ring. Focus the content instead; Tab still reaches the X first.
+      contentRef.current?.focus();
     }
   }, [item]);
 
@@ -58,16 +62,19 @@ export function ItemDialog({ item, onClose }: ItemDialogProps) {
       }}
       className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto overscroll-contain rounded-3xl bg-white p-0 text-espresso-950 shadow-[0_24px_64px_-16px_rgb(42_24_16/0.45)] transition-[opacity,translate] duration-300 ease-out-expo [scrollbar-color:var(--color-latte-300)_transparent] backdrop:bg-espresso-950/40 motion-reduce:transition-none starting:open:translate-y-4 starting:open:opacity-0"
     >
-      {/* key={item.id} gives each item fresh choices every time it opens. */}
-      {item && (
-        <ItemOptions
-          key={item.id}
-          item={item}
-          titleId={titleId}
-          descriptionId={descriptionId}
-          onClose={() => dialogRef.current?.close()}
-        />
-      )}
+      {/* tabIndex={-1}: code can focus this, but Tab skips over it. */}
+      <div ref={contentRef} tabIndex={-1} className="outline-none">
+        {/* key={item.id} gives each item fresh choices every time it opens. */}
+        {item && (
+          <ItemOptions
+            key={item.id}
+            item={item}
+            titleId={titleId}
+            descriptionId={descriptionId}
+            onClose={() => dialogRef.current?.close()}
+          />
+        )}
+      </div>
     </dialog>
   );
 }
