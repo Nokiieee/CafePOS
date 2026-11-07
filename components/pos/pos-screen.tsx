@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { BillPanel } from "./bill-panel";
 import { categories } from "./categories";
 import { CategoryNav } from "./category-nav";
 import { ItemDialog } from "./item-dialog";
 import { MenuGrid } from "./menu-grid";
 import { menuItems, type MenuItem } from "./menu-items";
+import { useBill } from "./use-bill";
 
 type PosScreenProps = {
   /** Shown at the top right, e.g. who is signed in. Rendered on the server. */
@@ -16,6 +18,7 @@ export function PosScreen({ account }: PosScreenProps) {
   const [selectedId, setSelectedId] = useState(categories[0].id);
   // The item whose options popup is open, or null when it's closed.
   const [openItem, setOpenItem] = useState<MenuItem | null>(null);
+  const bill = useBill();
   const selected =
     categories.find((category) => category.id === selectedId) ?? categories[0];
   const Icon = selected.icon;
@@ -30,7 +33,7 @@ export function PosScreen({ account }: PosScreenProps) {
     <div className="flex h-dvh bg-milk text-espresso-950">
       <CategoryNav selectedId={selected.id} onSelect={setSelectedId} />
 
-      <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-8 [scrollbar-color:var(--color-latte-300)_transparent] sm:px-10">
+      <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pt-8 pb-24 [scrollbar-color:var(--color-latte-300)_transparent] sm:px-10 md:pb-8">
         <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="flex items-baseline gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">
@@ -66,7 +69,9 @@ export function PosScreen({ account }: PosScreenProps) {
         )}
       </main>
 
-      <ItemDialog item={openItem} onClose={() => setOpenItem(null)} />
+      <BillPanel bill={bill} />
+
+      <ItemDialog item={openItem} onClose={() => setOpenItem(null)} onAdd={bill.add} />
     </div>
   );
 }
