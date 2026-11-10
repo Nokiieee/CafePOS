@@ -17,11 +17,13 @@ import type { Bill } from "./use-bill";
 
 type BillPanelProps = {
   bill: Bill;
+  /** Called when Charge is tapped, to take payment for the bill. */
+  onCharge: () => void;
 };
 
 // The bill on the right of the cashier screen. On phones it hides behind a bar
 // at the bottom of the screen, because there's no room for a third column.
-export function BillPanel({ bill }: BillPanelProps) {
+export function BillPanel({ bill, onCharge }: BillPanelProps) {
   const [isOpenOnPhone, setIsOpenOnPhone] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const isEmpty = bill.lines.length === 0;
@@ -132,10 +134,10 @@ export function BillPanel({ bill }: BillPanelProps) {
             </p>
           </div>
 
-          {/* Payment comes in a later step, so this doesn't do anything yet. */}
           <button
             type="button"
             disabled={isEmpty}
+            onClick={onCharge}
             className="h-14 w-full rounded-2xl bg-milk text-lg font-semibold text-espresso-800 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-milk focus-visible:ring-offset-2 focus-visible:ring-offset-espresso-700 active:bg-latte-200 disabled:cursor-not-allowed disabled:bg-espresso-600 disabled:text-latte-200"
           >
             Charge

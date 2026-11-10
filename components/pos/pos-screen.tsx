@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { BillPanel } from "./bill-panel";
 import { categories } from "./categories";
 import { CategoryNav } from "./category-nav";
+import { ChargeDialog } from "./charge-dialog";
 import { ItemDialog } from "./item-dialog";
 import { MenuGrid } from "./menu-grid";
 import { menuItems, type MenuItem } from "./menu-items";
@@ -18,6 +19,8 @@ export function PosScreen({ account }: PosScreenProps) {
   const [selectedId, setSelectedId] = useState(categories[0].id);
   // The item whose options popup is open, or null when it's closed.
   const [openItem, setOpenItem] = useState<MenuItem | null>(null);
+  // Whether the cash payment popup is open.
+  const [isCharging, setIsCharging] = useState(false);
   const bill = useBill();
   const selected =
     categories.find((category) => category.id === selectedId) ?? categories[0];
@@ -69,9 +72,17 @@ export function PosScreen({ account }: PosScreenProps) {
         )}
       </main>
 
-      <BillPanel bill={bill} />
+      <BillPanel bill={bill} onCharge={() => setIsCharging(true)} />
 
       <ItemDialog item={openItem} onClose={() => setOpenItem(null)} onAdd={bill.add} />
+
+      {/* Paying clears the bill. Saving the order to Supabase comes next. */}
+      <ChargeDialog
+        isOpen={isCharging}
+        total={bill.total}
+        onClose={() => setIsCharging(false)}
+        onPaid={bill.clear}
+      />
     </div>
   );
 }
