@@ -80,6 +80,8 @@ export function PosScreen({ account }: PosScreenProps) {
       <ChargeDialog
         isOpen={isCharging}
         total={bill.total}
+        orderType={bill.orderType}
+        onOrderTypeChange={bill.setOrderType}
         onClose={() => setIsCharging(false)}
         onPaid={bill.clear}
       />

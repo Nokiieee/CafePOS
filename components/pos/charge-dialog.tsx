@@ -10,6 +10,7 @@ import {
 } from "react";
 import { PiBackspace, PiCheckCircleFill, PiX } from "react-icons/pi";
 import { formatPrice } from "@/lib/format-price";
+import { orderTypes, type OrderType } from "./bill";
 import {
   cashEntryToCents,
   centsToCashEntry,
@@ -18,17 +19,22 @@ import {
   quickCashAmounts,
   type CashKey,
 } from "./cash";
+import { SegmentedControl } from "./option-controls";
 
-/** A finished cash payment, in cents. Kept so it can be shown after the bill clears. */
+/** A finished cash payment (amounts in cents). Kept so it can be shown after the bill clears. */
 type Payment = {
   total: number;
   received: number;
+  orderType: OrderType;
 };
 
 type ChargeDialogProps = {
   isOpen: boolean;
   /** The bill total, in cents. */
   total: number;
+  /** The bill's Dine In / Take Out. The popup can change it too. */
+  orderType: OrderType;
+  onOrderTypeChange: (orderType: OrderType) => void;
   /** Called after the popup closes, however it was closed. */
   onClose: () => void;
   /** Called once the cashier confirms the cash. The bill is paid. */
@@ -38,7 +44,14 @@ type ChargeDialogProps = {
 // The popup that opens from Charge. First the cashier enters the cash the
 // customer handed over; after Confirm it shows the change until New order.
 // Like the item popup, it's the browser's own <dialog>.
-export function ChargeDialog({ isOpen, total, onClose, onPaid }: ChargeDialogProps) {
+export function ChargeDialog({
+  isOpen,
+  total,
+  orderType,
+  onOrderTypeChange,
+  onClose,
+  onPaid,
+}: ChargeDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -83,11 +96,13 @@ export function ChargeDialog({ isOpen, total, onClose, onPaid }: ChargeDialogPro
             <CashView
               titleId={titleId}
               total={total}
+              orderType={orderType}
+              onOrderTypeChange={onOrderTypeChange}
               onCancel={close}
               onConfirm={(received) => {
                 // The Confirm button is about to disappear; keep focus inside.
                 contentRef.current?.focus();
-                setPayment({ total, received });
+                setPayment({ total, received, orderType });
                 onPaid();
               }}
             />
@@ -100,11 +115,20 @@ export function ChargeDialog({ isOpen, total, onClose, onPaid }: ChargeDialogPro
 type CashViewProps = {
   titleId: string;
   total: number;
+  orderType: OrderType;
+  onOrderTypeChange: (orderType: OrderType) => void;
   onCancel: () => void;
   onConfirm: (received: number) => void;
 };
 
-function CashView({ titleId, total, onCancel, onConfirm }: CashViewProps) {
+function CashView({
+  titleId,
+  total,
+  orderType,
+  onOrderTypeChange,
+  onCancel,
+  onConfirm,
+}: CashViewProps) {
   // What's typed so far, as text ("13.5"). See cash.ts.
   const [entry, setEntry] = useState("");
   // After a one-tap amount, the next key starts a new amount instead of
@@ -173,6 +197,17 @@ function CashView({ titleId, total, onCancel, onConfirm }: CashViewProps) {
 
       <div className="grid gap-6 p-5 sm:px-7 md:grid-cols-2 md:gap-8">
         <div className="space-y-5">
+          {/* The same switch as on the bill, so it can be checked before paying.
+              A different name keeps its radios apart from the bill's. */}
+          <div role="radiogroup" aria-label="Order type">
+            <SegmentedControl
+              name="charge-order-type"
+              value={orderType}
+              onChange={onOrderTypeChange}
+              options={orderTypes}
+            />
+          </div>
+
           <div className="flex items-baseline justify-between gap-3">
             <span className="font-medium text-roast-500">Amount due</span>
             <span className="text-2xl font-semibold text-espresso-950 tabular-nums">
@@ -363,6 +398,12 @@ function PaidView({ titleId, payment, onDone }: PaidViewProps) {
       </p>
 
       <dl className="mt-8 w-full divide-y divide-latte-200 rounded-2xl text-left ring-1 ring-latte-200">
+        <div className="flex justify-between gap-3 px-4 py-3">
+          <dt className="text-roast-500">Order type</dt>
+          <dd className="font-semibold">
+            {orderTypes.find((type) => type.value === payment.orderType)?.label}
+          </dd>
+        </div>
         <div className="flex justify-between gap-3 px-4 py-3">
           <dt className="text-roast-500">Total</dt>
           <dd className="font-semibold tabular-nums">{formatPrice(payment.total)}</dd>
