@@ -181,15 +181,33 @@ function CashView({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3 px-5 pt-5 sm:px-7 sm:pt-6">
+      {/* Wide screens: title, then Dine In / Take Out, then X, in one row.
+          Narrow screens: the switch wraps to its own full-width row below. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 pt-5 sm:px-7 sm:pt-6">
         <h2 id={titleId} className="text-2xl font-semibold tracking-tight">
           Cash payment
         </h2>
+        {/* The same switch as on the bill, so it can be checked before paying.
+            It sits up here, not beside the amounts, so it doesn't make that
+            column taller and stretch the gaps in the number pad.
+            A different name keeps its radios apart from the bill's. */}
+        <div
+          role="radiogroup"
+          aria-label="Order type"
+          className="order-last w-full md:order-none md:ml-auto md:w-60"
+        >
+          <SegmentedControl
+            name="charge-order-type"
+            value={orderType}
+            onChange={onOrderTypeChange}
+            options={orderTypes}
+          />
+        </div>
         <button
           type="button"
           aria-label="Cancel"
           onClick={onCancel}
-          className="-mr-2 flex size-11 items-center justify-center rounded-xl text-roast-500 transition-colors duration-200 outline-none hover:bg-latte-100 hover:text-espresso-900 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
+          className="-mr-2 ml-auto flex size-11 md:ml-0 items-center justify-center rounded-xl text-roast-500 transition-colors duration-200 outline-none hover:bg-latte-100 hover:text-espresso-900 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
         >
           <PiX aria-hidden className="size-6" />
         </button>
@@ -197,17 +215,6 @@ function CashView({
 
       <div className="grid gap-6 p-5 sm:px-7 md:grid-cols-2 md:gap-8">
         <div className="space-y-5">
-          {/* The same switch as on the bill, so it can be checked before paying.
-              A different name keeps its radios apart from the bill's. */}
-          <div role="radiogroup" aria-label="Order type">
-            <SegmentedControl
-              name="charge-order-type"
-              value={orderType}
-              onChange={onOrderTypeChange}
-              options={orderTypes}
-            />
-          </div>
-
           <div className="flex items-baseline justify-between gap-3">
             <span className="font-medium text-roast-500">Amount due</span>
             <span className="text-2xl font-semibold text-espresso-950 tabular-nums">
