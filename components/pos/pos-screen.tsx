@@ -10,7 +10,7 @@ import { ChargeDialog } from "./charge-dialog";
 import { ItemDialog } from "./item-dialog";
 import { MenuGrid } from "./menu-grid";
 import { menuItems, type MenuItem } from "./menu-items";
-import { useBill } from "./use-bill";
+import { useCurrentBill } from "./bill-provider";
 
 type PosScreenProps = {
   /** Shown at the top right, e.g. who is signed in. Rendered on the server. */
@@ -24,7 +24,8 @@ export function PosScreen({ account }: PosScreenProps) {
   // The id of the order being paid for. Made when Charge is tapped, and null
   // while the payment popup is closed.
   const [chargeOrderId, setChargeOrderId] = useState<string | null>(null);
-  const bill = useBill();
+  // The bill lives in app/dashboard/layout.tsx, so it survives a trip to Orders.
+  const bill = useCurrentBill();
 
   // Saves the bill as a paid order. Only the item, options and quantity of
   // each line are sent; the server looks up names and prices itself.

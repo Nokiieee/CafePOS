@@ -1,17 +1,15 @@
 "use client";
 
-import { PiCoffeeBeanFill } from "react-icons/pi";
+import { PiReceipt, PiReceiptFill } from "react-icons/pi";
 import { categories } from "./categories";
-
-// Tile size and gap, in px. The puck's position is calculated from these.
-const TILE_HEIGHT = 76;
-const TILE_GAP = 8;
+import { Rail, RailLink, TILE_GAP, TILE_HEIGHT } from "./rail";
 
 type CategoryNavProps = {
   selectedId: string;
   onSelect: (id: string) => void;
 };
 
+// The cashier screen's rail: the menu categories, and a link to Orders.
 export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
   const selectedIndex = Math.max(
     0,
@@ -19,14 +17,17 @@ export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
   );
 
   return (
-    <aside className="flex w-28 shrink-0 flex-col items-center gap-8 bg-latte-100 py-6">
-      {/* Logo mark */}
-      <div className="flex flex-col items-center gap-1 text-espresso-900">
-        <PiCoffeeBeanFill aria-hidden className="size-9" />
-        <span className="text-xs font-semibold tracking-tight">Cafe POS</span>
-      </div>
-
-      <nav aria-label="Menu categories" className="flex-1">
+    <Rail
+      footer={
+        <RailLink
+          href="/dashboard/orders"
+          label="Orders"
+          icon={PiReceipt}
+          activeIcon={PiReceiptFill}
+        />
+      }
+    >
+      <nav aria-label="Menu categories">
         <ul className="relative flex flex-col" style={{ gap: TILE_GAP }}>
           {/* The "puck": one brown fill that glides to the selected tile. */}
           <li
@@ -63,6 +64,6 @@ export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
           })}
         </ul>
       </nav>
-    </aside>
+    </Rail>
   );
 }
