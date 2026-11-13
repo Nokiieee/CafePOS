@@ -34,6 +34,8 @@ export type DrinkOptions = {
 export type BillLine = {
   /** The same item with the same options has the same key, so they share a row. */
   key: string;
+  /** The menu item's id, like "iced-latte". Saving the order sends this. */
+  itemId: string;
   name: string;
   /** null for sides and pasta, which have no drink options. */
   options: DrinkOptions | null;
@@ -47,6 +49,7 @@ export function createLine({ item, size, sugar, ice, quantity }: ItemChoice): Bi
 
   return {
     key: isDrink ? `${item.id}|${size}|${ice}|${sugar}` : item.id,
+    itemId: item.id,
     name: item.name,
     options: isDrink ? { size, sugar, ice } : null,
     unitPrice: unitPrice(item, size),
@@ -92,4 +95,19 @@ export function createBillId(): string {
   ).join("");
 
   return `${month}${day}-${code}`;
+}
+
+// A random id in the standard UUID format, made when Charge opens. It goes
+// with the order to Supabase, and a retry sends the same one, so the same
+// payment can't be saved twice.
+// crypto.randomUUID() would be shorter, but browsers only allow it on https
+// or localhost, and an iPad opening the dev server uses plain http.
+export function createOrderId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  // Two fixed parts of the format: "version 4" (random) and its "variant".
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }

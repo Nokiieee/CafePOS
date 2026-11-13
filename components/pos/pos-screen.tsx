@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { saveOrder, type SaveOrderResult } from "@/actions/orders";
+import { createOrderId } from "./bill";
 import { BillPanel } from "./bill-panel";
 import { categories } from "./categories";
 import { CategoryNav } from "./category-nav";
@@ -19,9 +21,21 @@ export function PosScreen({ account }: PosScreenProps) {
   const [selectedId, setSelectedId] = useState(categories[0].id);
   // The item whose options popup is open, or null when it's closed.
   const [openItem, setOpenItem] = useState<MenuItem | null>(null);
-  // Whether the cash payment popup is open.
-  const [isCharging, setIsCharging] = useState(false);
+  // The id of the order being paid for. Made when Charge is tapped, and null
+  // while the payment popup is closed.
+  const [chargeOrderId, setChargeOrderId] = useState<string | null>(null);
   const bill = useBill();
+
+  // Saves the bill as a paid order. Only the item, options and quantity of
+  // each line are sent; the server looks up names and prices itself.
+  function saveBill(orderId: string, cashReceivedCents: number): Promise<SaveOrderResult> {
+    return saveOrder({
+      orderId,
+      orderType: bill.orderType,
+      cashReceivedCents,
+      lines: bill.lines.map(({ itemId, options, quantity }) => ({ itemId, options, quantity })),
+    });
+  }
   const selected =
     categories.find((category) => category.id === selectedId) ?? categories[0];
   const Icon = selected.icon;
@@ -72,17 +86,19 @@ export function PosScreen({ account }: PosScreenProps) {
         )}
       </main>
 
-      <BillPanel bill={bill} onCharge={() => setIsCharging(true)} />
+      {/* The id is made here, in a tap, not while drawing: React can draw
+          more than once, and a random value would change each time. */}
+      <BillPanel bill={bill} onCharge={() => setChargeOrderId(createOrderId())} />
 
       <ItemDialog item={openItem} onClose={() => setOpenItem(null)} onAdd={bill.add} />
 
-      {/* Paying clears the bill. Saving the order to Supabase comes next. */}
       <ChargeDialog
-        isOpen={isCharging}
+        orderId={chargeOrderId}
         total={bill.total}
         orderType={bill.orderType}
         onOrderTypeChange={bill.setOrderType}
-        onClose={() => setIsCharging(false)}
+        onClose={() => setChargeOrderId(null)}
+        onPay={saveBill}
         onPaid={bill.clear}
       />
     </div>

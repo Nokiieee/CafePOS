@@ -8,7 +8,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { PiBackspace, PiCheckCircleFill, PiX } from "react-icons/pi";
+import {
+  PiBackspace,
+  PiCheckCircleFill,
+  PiSpinnerGap,
+  PiWarningCircleFill,
+  PiX,
+} from "react-icons/pi";
+import type { SaveOrderResult } from "@/actions/orders";
 import { formatPrice } from "@/lib/format-price";
 import { orderTypes, type OrderType } from "./bill";
 import {
@@ -29,7 +36,8 @@ type Payment = {
 };
 
 type ChargeDialogProps = {
-  isOpen: boolean;
+  /** The id of the order being paid for. null means the popup is closed. */
+  orderId: string | null;
   /** The bill total, in cents. */
   total: number;
   /** The bill's Dine In / Take Out. The popup can change it too. */
@@ -37,24 +45,36 @@ type ChargeDialogProps = {
   onOrderTypeChange: (orderType: OrderType) => void;
   /** Called after the popup closes, however it was closed. */
   onClose: () => void;
-  /** Called once the cashier confirms the cash. The bill is paid. */
+  /** Saves the paid order. */
+  onPay: (orderId: string, cashReceivedCents: number) => Promise<SaveOrderResult>;
+  /** Called once the order is saved, to clear the bill. Not called if saving fails. */
   onPaid: () => void;
 };
 
+// Shown when the request never got an answer, e.g. the Wi-Fi dropped.
+const NO_CONNECTION_MESSAGE =
+  "Couldn't reach the server. Check the internet connection and try again.";
+
 // The popup that opens from Charge. First the cashier enters the cash the
-// customer handed over; after Confirm it shows the change until New order.
-// Like the item popup, it's the browser's own <dialog>.
+// customer handed over; Confirm saves the order, then it shows the change
+// until New order. Like the item popup, it's the browser's own <dialog>.
 export function ChargeDialog({
-  isOpen,
+  orderId,
   total,
   orderType,
   onOrderTypeChange,
   onClose,
+  onPay,
   onPaid,
 }: ChargeDialogProps) {
+  const isOpen = orderId !== null;
   const dialogRef = useRef<HTMLDialogElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // True while the order is being saved.
+  const [isSaving, setIsSaving] = useState(false);
+  // Why the last save failed, shown above Confirm.
+  const [error, setError] = useState<string | null>(null);
   // Set once paid. The bill is already cleared by then, so this keeps the numbers.
   const [payment, setPayment] = useState<Payment | null>(null);
 
@@ -72,18 +92,55 @@ export function ChargeDialog({
     dialogRef.current?.close();
   }
 
+  async function pay(received: number) {
+    if (!orderId || isSaving) return;
+
+    // Copied now: once saved, the bill clears and these drop back to defaults.
+    const paid: Payment = { total, received, orderType };
+    setIsSaving(true);
+    setError(null);
+
+    let result: SaveOrderResult | undefined;
+    try {
+      result = await onPay(orderId, received);
+    } catch {
+      // The request itself failed, so there's no result to read.
+      result = undefined;
+    }
+
+    setIsSaving(false);
+    if (result?.ok) {
+      // The Confirm button is about to disappear; keep focus inside.
+      contentRef.current?.focus();
+      // Both in the same update, so the cash screen never shows the empty
+      // bill's $0.00 before the paid screen replaces it.
+      setPayment(paid);
+      onPaid();
+    } else {
+      // The bill and the typed cash stay, so Try again sends the same order.
+      setError(result?.message ?? NO_CONNECTION_MESSAGE);
+    }
+  }
+
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
+      // Escape closes the popup, except while saving: the order might still
+      // be saved, and closing would leave its bill on screen to charge again.
+      onCancel={(event) => {
+        if (isSaving) event.preventDefault();
+      }}
       onClose={() => {
         setPayment(null);
+        setError(null);
         onClose();
       }}
-      // A tap on the dark area around the popup cancels the charge. Once paid
-      // it does nothing, so the change can't vanish before it's handed over.
+      // A tap on the dark area around the popup cancels the charge. While
+      // saving, or once paid, it does nothing, so the change can't vanish
+      // before it's handed over.
       onClick={(event) => {
-        if (event.target === event.currentTarget && !payment) close();
+        if (event.target === event.currentTarget && !payment && !isSaving) close();
       }}
       className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-3xl bg-white p-0 text-espresso-950 shadow-[0_24px_64px_-16px_rgb(42_24_16/0.45)] transition-[opacity,translate] duration-300 ease-out-expo [scrollbar-color:var(--color-latte-300)_transparent] backdrop:bg-espresso-950/40 motion-reduce:transition-none starting:open:translate-y-4 starting:open:opacity-0 md:max-w-3xl"
     >
@@ -97,14 +154,11 @@ export function ChargeDialog({
               titleId={titleId}
               total={total}
               orderType={orderType}
+              isSaving={isSaving}
+              error={error}
               onOrderTypeChange={onOrderTypeChange}
               onCancel={close}
-              onConfirm={(received) => {
-                // The Confirm button is about to disappear; keep focus inside.
-                contentRef.current?.focus();
-                setPayment({ total, received, orderType });
-                onPaid();
-              }}
+              onConfirm={pay}
             />
           ))}
       </div>
@@ -116,6 +170,8 @@ type CashViewProps = {
   titleId: string;
   total: number;
   orderType: OrderType;
+  isSaving: boolean;
+  error: string | null;
   onOrderTypeChange: (orderType: OrderType) => void;
   onCancel: () => void;
   onConfirm: (received: number) => void;
@@ -125,6 +181,8 @@ function CashView({
   titleId,
   total,
   orderType,
+  isSaving,
+  error,
   onOrderTypeChange,
   onCancel,
   onConfirm,
@@ -153,12 +211,17 @@ function CashView({
   }
 
   function confirm() {
-    if (isEnough) onConfirm(received);
+    if (isEnough && !isSaving) onConfirm(received);
   }
 
   // A real keyboard works too: digits, the point, Backspace and Enter.
   const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    // While saving, the amount is locked, like the buttons.
+    if (isSaving) {
+      if (event.key === "Enter") event.preventDefault();
+      return;
+    }
 
     if (/^[0-9.]$/.test(event.key)) {
       press(event.key as CashKey);
@@ -182,8 +245,13 @@ function CashView({
   return (
     <>
       {/* Wide screens: title, then Dine In / Take Out, then X, in one row.
-          Narrow screens: the switch wraps to its own full-width row below. */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 pt-5 sm:px-7 sm:pt-6">
+          Narrow screens: the switch wraps to its own full-width row below.
+          inert while saving: nothing in here can be tapped or focused, so the
+          order can't change while it's being saved. */}
+      <div
+        inert={isSaving}
+        className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 pt-5 sm:px-7 sm:pt-6"
+      >
         <h2 id={titleId} className="text-2xl font-semibold tracking-tight">
           Cash payment
         </h2>
@@ -213,7 +281,7 @@ function CashView({
         </button>
       </div>
 
-      <div className="grid gap-6 p-5 sm:px-7 md:grid-cols-2 md:gap-8">
+      <div inert={isSaving} className="grid gap-6 p-5 sm:px-7 md:grid-cols-2 md:gap-8">
         <div className="space-y-5">
           <div className="flex items-baseline justify-between gap-3">
             <span className="font-medium text-roast-500">Amount due</span>
@@ -265,13 +333,37 @@ function CashView({
       </div>
 
       <div className="sticky bottom-0 z-10 border-t border-latte-200 bg-milk px-5 py-4 sm:px-7">
+        {/* role="alert" makes screen readers read it out as soon as it appears. */}
+        {error && (
+          <p
+            role="alert"
+            className="mb-3 flex items-start gap-2.5 rounded-2xl bg-latte-100 px-4 py-3 text-sm leading-snug font-medium text-espresso-900"
+          >
+            <PiWarningCircleFill aria-hidden className="size-5 shrink-0 text-espresso-700" />
+            {error}
+          </p>
+        )}
+        {/* While saving it stays dark (aria-disabled, not disabled), so it
+            reads as "working on it" rather than "not allowed". */}
         <button
           type="button"
           disabled={!isEnough}
+          aria-disabled={isSaving}
           onClick={confirm}
-          className="h-14 w-full rounded-2xl bg-espresso-700 text-lg font-semibold text-milk transition-colors duration-200 outline-none hover:bg-espresso-800 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk active:bg-espresso-900 disabled:cursor-not-allowed disabled:bg-latte-200 disabled:text-roast-400"
+          className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-espresso-700 text-lg font-semibold text-milk transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk disabled:cursor-not-allowed disabled:bg-latte-200 disabled:text-roast-400 ${
+            isSaving ? "cursor-wait" : "hover:bg-espresso-800 active:bg-espresso-900"
+          }`}
         >
-          Confirm payment
+          {isSaving ? (
+            <>
+              <PiSpinnerGap aria-hidden className="size-5 animate-spin motion-reduce:animate-none" />
+              Saving…
+            </>
+          ) : error ? (
+            "Try again"
+          ) : (
+            "Confirm payment"
+          )}
         </button>
       </div>
     </>
