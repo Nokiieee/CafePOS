@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { OrderList, OrderListSkeleton } from "@/components/orders/order-list";
+import { DayPicker } from "@/components/orders/day-picker";
+import { OrderListSkeleton } from "@/components/orders/order-list";
 import { OrdersRail } from "@/components/orders/orders-rail";
+import { OrdersView } from "@/components/orders/orders-view";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
 import { getCurrentUser } from "@/lib/auth";
 import { cafeToday, formatCafeDay, isCafeDay } from "@/lib/cafe-time";
@@ -54,32 +56,36 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
   const isToday = day === today;
 
   const orders = await getOrdersForDay(day);
-
-  if (!orders) {
-    return (
-      <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
-        The orders couldn&apos;t be loaded. Check the internet connection and refresh the page.
-      </p>
-    );
-  }
-
-  const sales = orders.reduce((sum, order) => sum + order.totalCents, 0);
+  const sales = orders?.reduce((sum, order) => sum + order.totalCents, 0) ?? 0;
 
   return (
-    <section aria-label="Orders for the day" className="flex flex-1 flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="text-lg font-semibold">
-          {isToday && <span className="text-espresso-700">Today · </span>}
-          {formatCafeDay(day)}
-        </h2>
-        <p className="text-roast-500">
-          {orders.length} {orders.length === 1 ? "order" : "orders"} ·{" "}
-          <span className="font-semibold text-espresso-900 tabular-nums">{formatPrice(sales)}</span>{" "}
-          in sales
-        </p>
+    <section aria-labelledby="orders-day" className="flex flex-1 flex-col gap-4">
+      {/* For screen readers; the picker below shows the same day. */}
+      <h2 id="orders-day" className="sr-only">
+        Orders for {formatCafeDay(day)}
+      </h2>
+
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <DayPicker day={day} today={today} />
+        {orders && (
+          <p className="text-roast-500">
+            {orders.length} {orders.length === 1 ? "order" : "orders"} ·{" "}
+            <span className="font-semibold text-espresso-900 tabular-nums">
+              {formatPrice(sales)}
+            </span>{" "}
+            in sales
+          </p>
+        )}
       </div>
 
-      <OrderList orders={orders} isToday={isToday} />
+      {orders ? (
+        // key={day}: a different day starts fresh, with its newest order picked.
+        <OrdersView key={day} orders={orders} isToday={isToday} />
+      ) : (
+        <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
+          The orders couldn&apos;t be loaded. Check the internet connection and refresh the page.
+        </p>
+      )}
     </section>
   );
 }
