@@ -24,7 +24,7 @@ export type ItemChoice = {
   quantity: number;
 };
 
-type DrinkOptions = {
+export type DrinkOptions = {
   size: SizeId;
   sugar: SugarLevel;
   ice: IceLevel;
