@@ -54,6 +54,18 @@ export function formatCafeTime(moment: string): string {
   }).format(new Date(moment));
 }
 
+/** A moment as the cafe's date and time, for receipts: "Nov 13, 2026, 2:05 PM". */
+export function formatCafeDateTime(moment: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: CAFE_TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(moment));
+}
+
 /** A day in words: "Friday, November 13, 2026". */
 export function formatCafeDay(day: string): string {
   // Noon UTC on that date, shown in UTC, can't slip into the day before or after.

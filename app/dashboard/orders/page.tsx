@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { OrderList, OrderListSkeleton } from "@/components/orders/order-list";
+import { OrderListSkeleton } from "@/components/orders/order-list";
 import { OrdersRail } from "@/components/orders/orders-rail";
+import { OrdersView } from "@/components/orders/orders-view";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
 import { getCurrentUser } from "@/lib/auth";
 import { cafeToday, formatCafeDay, isCafeDay } from "@/lib/cafe-time";
@@ -79,7 +80,8 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
         </p>
       </div>
 
-      <OrderList orders={orders} isToday={isToday} />
+      {/* key={day}: a different day starts fresh, with its newest order picked. */}
+      <OrdersView key={day} orders={orders} isToday={isToday} />
     </section>
   );
 }
