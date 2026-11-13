@@ -49,11 +49,10 @@ export function OrdersView({ orders, isToday }: OrdersViewProps) {
       {/* md and up: a column that stays in view while the list scrolls.
           A very long receipt scrolls inside the column, so its end is reachable
           (-m-1 p-1 leaves room for focus rings, which scrolling would clip).
-          Phones: hidden until a row is tapped, then it covers the screen.
-          print:static so the printed receipt isn't placed inside this column. */}
+          Phones: hidden until a row is tapped, then it covers the screen. */}
       <aside
         aria-label="Order receipt"
-        className={`[scrollbar-width:none] print:static print:max-h-none print:overflow-visible md:sticky md:top-0 md:block md:-m-1 md:max-h-[calc(100dvh-4rem)] md:overflow-y-auto md:p-1 ${
+        className={`[scrollbar-width:none] md:sticky md:top-0 md:block md:-m-1 md:max-h-[calc(100dvh-4rem)] md:overflow-y-auto md:p-1 ${
           isOpenOnPhone
             ? "fixed inset-0 z-20 block overflow-y-auto bg-milk px-4 pt-4 pb-8"
             : "hidden"

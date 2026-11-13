@@ -1,4 +1,4 @@
-import { PiCoffeeBeanFill, PiPrinter } from "react-icons/pi";
+import { PiCoffeeBeanFill } from "react-icons/pi";
 import { describeOptions, orderTypes } from "@/components/pos/bill";
 import type { IceLevel, SizeId, SugarLevel } from "@/components/pos/item-options";
 import { formatCafeDateTime } from "@/lib/cafe-time";
@@ -10,62 +10,43 @@ type OrderReceiptProps = {
 };
 
 // One saved order as a receipt: when, who, every line, and the money.
-// data-print-area marks it as the only thing that prints (see globals.css).
 export function OrderReceipt({ order }: OrderReceiptProps) {
   const orderType = orderTypes.find((type) => type.value === order.orderType)?.label;
 
   return (
-    <div className="flex flex-col gap-3">
-      <article
-        data-print-area
-        aria-label="Receipt"
-        className="rounded-3xl bg-white px-6 py-7 ring-1 ring-latte-200"
-      >
-        <header className="flex flex-col items-center gap-1 text-center">
-          <PiCoffeeBeanFill aria-hidden className="size-8 text-espresso-900" />
-          <p className="text-lg font-semibold tracking-tight">Cafe POS</p>
-          <p className="text-sm text-roast-500 tabular-nums">
-            {formatCafeDateTime(order.createdAt)}
-          </p>
-          <p className="text-sm text-roast-500">
-            {orderType} · Cashier: {order.cashierName}
-          </p>
-        </header>
+    <article aria-label="Receipt" className="rounded-3xl bg-white px-6 py-7 ring-1 ring-latte-200">
+      <header className="flex flex-col items-center gap-1 text-center">
+        <PiCoffeeBeanFill aria-hidden className="size-8 text-espresso-900" />
+        <p className="text-lg font-semibold tracking-tight">Cafe POS</p>
+        <p className="text-sm text-roast-500 tabular-nums">{formatCafeDateTime(order.createdAt)}</p>
+        <p className="text-sm text-roast-500">
+          {orderType} · Cashier: {order.cashierName}
+        </p>
+      </header>
 
-        <ul className="mt-5 space-y-3 border-t border-dashed border-latte-300 pt-5">
-          {order.lines.map((line) => (
-            <ReceiptLine key={line.lineNo} line={line} />
-          ))}
-        </ul>
+      <ul className="mt-5 space-y-3 border-t border-dashed border-latte-300 pt-5">
+        {order.lines.map((line) => (
+          <ReceiptLine key={line.lineNo} line={line} />
+        ))}
+      </ul>
 
-        <dl className="mt-5 space-y-1.5 border-t border-dashed border-latte-300 pt-5">
-          <div className="flex justify-between gap-3 text-lg font-semibold">
-            <dt>Total</dt>
-            <dd className="tabular-nums">{formatPrice(order.totalCents)}</dd>
-          </div>
-          <div className="flex justify-between gap-3 text-roast-500">
-            <dt>Cash</dt>
-            <dd className="tabular-nums">{formatPrice(order.cashReceivedCents)}</dd>
-          </div>
-          <div className="flex justify-between gap-3 text-roast-500">
-            <dt>Change</dt>
-            <dd className="tabular-nums">{formatPrice(order.changeCents)}</dd>
-          </div>
-        </dl>
+      <dl className="mt-5 space-y-1.5 border-t border-dashed border-latte-300 pt-5">
+        <div className="flex justify-between gap-3 text-lg font-semibold">
+          <dt>Total</dt>
+          <dd className="tabular-nums">{formatPrice(order.totalCents)}</dd>
+        </div>
+        <div className="flex justify-between gap-3 text-roast-500">
+          <dt>Cash</dt>
+          <dd className="tabular-nums">{formatPrice(order.cashReceivedCents)}</dd>
+        </div>
+        <div className="flex justify-between gap-3 text-roast-500">
+          <dt>Change</dt>
+          <dd className="tabular-nums">{formatPrice(order.changeCents)}</dd>
+        </div>
+      </dl>
 
-        <p className="mt-6 text-center text-sm text-roast-500">Thank you!</p>
-      </article>
-
-      {/* Opens the browser's print dialog. Only the receipt above prints. */}
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-espresso-700 text-lg font-semibold text-milk transition-colors duration-200 outline-none hover:bg-espresso-800 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk active:bg-espresso-900"
-      >
-        <PiPrinter aria-hidden className="size-5" />
-        Print receipt
-      </button>
-    </div>
+      <p className="mt-6 text-center text-sm text-roast-500">Thank you!</p>
+    </article>
   );
 }
 

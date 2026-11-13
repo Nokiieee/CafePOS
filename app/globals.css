@@ -48,31 +48,3 @@ body {
   background: var(--color-latte-300);
   color: var(--color-espresso-950);
 }
-
-/* Printing: only the element marked data-print-area (the receipt) shows.
-   Everything else is made invisible, and the receipt is lifted to the top
-   of the page, centered, at about the width of a receipt. */
-@media print {
-  @page {
-    margin: 12mm;
-  }
-
-  body * {
-    visibility: hidden;
-  }
-
-  [data-print-area],
-  [data-print-area] * {
-    visibility: visible;
-  }
-
-  [data-print-area] {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    max-width: 22rem;
-    margin: 0 auto;
-    box-shadow: none;
-  }
-}
