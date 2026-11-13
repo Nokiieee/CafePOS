@@ -13,6 +13,8 @@ import {
 import { MAX_QUANTITY } from "./item-options";
 
 // Everything about the current bill, and the actions that change it.
+// Called once, in BillProvider (bill-provider.tsx). Everything else reads the
+// bill with useCurrentBill().
 export function useBill() {
   const [id, setId] = useState<string | null>(null);
   const [lines, setLines] = useState<BillLine[]>([]);
