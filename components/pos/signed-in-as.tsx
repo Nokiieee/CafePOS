@@ -1,4 +1,4 @@
-import { getCurrentUser, getDisplayName } from "@/lib/auth";
+import { getCurrentUser, getDisplayName, getRole } from "@/lib/auth";
 import { AccountMenu } from "./account-menu";
 
 // The account pill at the top right of dashboard pages.
@@ -6,8 +6,9 @@ import { AccountMenu } from "./account-menu";
 // getCurrentUser() also sends signed-out visitors back to the login page.
 export async function SignedInAs() {
   const user = await getCurrentUser();
+  const role = await getRole(user);
 
-  return <AccountMenu name={getDisplayName(user)} />;
+  return <AccountMenu name={getDisplayName(user)} role={role} />;
 }
 
 /** Shown while the account pill loads. */

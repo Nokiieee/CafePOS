@@ -3,12 +3,19 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { PiCaretDown, PiSignOut, PiUserFill } from "react-icons/pi";
 import { logout } from "@/actions/auth";
+import type { Role } from "@/lib/auth";
+
+const ROLE_LABELS: Record<Role, string> = {
+  admin: "Admin",
+  cashier: "Cashier",
+};
 
 type AccountMenuProps = {
   name: string;
+  role: Role;
 };
 
-export function AccountMenu({ name }: AccountMenuProps) {
+export function AccountMenu({ name, role }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -62,6 +69,13 @@ export function AccountMenu({ name }: AccountMenuProps) {
           id={menuId}
           className="absolute top-full left-0 z-10 mt-2 w-48 sm:right-0 sm:left-auto rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_-12px_rgb(61_36_25/0.35)] ring-1 ring-latte-200"
         >
+          {/* Who is signed in. The full name here, since the button may cut it short. */}
+          <div className="px-3 pt-2 pb-2.5">
+            <p className="font-semibold break-words text-espresso-900">{name}</p>
+            <p className="text-sm text-roast-500">{ROLE_LABELS[role]}</p>
+          </div>
+          <hr className="mx-1.5 mb-1.5 border-latte-200" />
+
           <form action={logout}>
             <button
               type="submit"

@@ -34,3 +34,40 @@ export async function getCurrentUser() {
 
   return user;
 }
+
+/** What a staff account can do. Set per account in the profiles table. */
+export type Role = "admin" | "cashier";
+
+// The user's role, from the profiles table (supabase/profiles.sql).
+// Only a clear "admin" counts as admin. A missing row, a database error or an
+// unknown value all mean cashier, so nobody becomes admin by accident.
+export async function getRole(user: User): Promise<Role> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    // One row or none (none: no error, data is null).
+    .maybeSingle()
+    // Supabase doesn't know our tables' types, so tell it what comes back.
+    .overrideTypes<{ role: string }, { merge: false }>();
+
+  if (error) {
+    console.error("Loading the role failed:", error.message);
+  }
+
+  return data?.role === "admin" ? "admin" : "cashier";
+}
+
+// For admin-only pages and actions. Returns the signed-in admin; signed-out
+// visitors go to the login page and cashiers go back to the register.
+export async function requireAdmin() {
+  const user = await getCurrentUser();
+
+  if ((await getRole(user)) !== "admin") {
+    redirect("/dashboard");
+  }
+
+  return user;
+}
