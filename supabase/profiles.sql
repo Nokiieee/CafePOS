@@ -8,6 +8,10 @@
 -- never in the app. Each new account gets a profile row automatically (see the
 -- trigger below), starting as a cashier.
 --
+-- Each profile keeps a copy of the account's email, so you can tell the rows
+-- apart in the Table Editor. The app doesn't use it. If you ever change an
+-- account's email in Authentication → Users, change it here too.
+--
 -- To make someone an admin: Table Editor → profiles → change their role to
 -- "admin". The app can only read roles. It can't add, change or delete them,
 -- not even for an admin.
@@ -21,6 +25,8 @@ create table if not exists public.profiles (
   -- The same id as the staff account. If the account is deleted, its profile
   -- goes too.
   id uuid primary key references auth.users (id) on delete cascade,
+  -- A copy of the account's email, only so you can tell the rows apart.
+  email text,
   role text not null default 'cashier' check (role in ('admin', 'cashier')),
   created_at timestamptz not null default now()
 );
@@ -59,8 +65,8 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.profiles (id)
-  values (new.id)
+  insert into public.profiles (id, email)
+  values (new.id, new.email)
   on conflict (id) do nothing;
 
   return new;
@@ -80,8 +86,8 @@ create trigger on_auth_user_created
 -- 4. Accounts made before this table existed get a cashier profile too
 -- ============================================================================
 
-insert into public.profiles (id)
-select id from auth.users
+insert into public.profiles (id, email)
+select id, email from auth.users
 on conflict (id) do nothing;
 
 
