@@ -37,10 +37,7 @@ type OrderRowProps = {
 function OrderRow({ order, isSelected, onSelect }: OrderRowProps) {
   const itemCount = order.lines.reduce((count, line) => count + line.quantity, 0);
   const orderType = orderTypes.find((type) => type.value === order.orderType)?.label;
-  // "2× Iced Latte, Fries": a quantity only when there's more than one.
-  const summary = order.lines
-    .map((line) => (line.quantity > 1 ? `${line.quantity}× ${line.name}` : line.name))
-    .join(", ");
+  const summary = orderSummary(order);
 
   return (
     <button
@@ -78,6 +75,13 @@ function OrderRow({ order, isSelected, onSelect }: OrderRowProps) {
       </span>
     </button>
   );
+}
+
+/** "2× Iced Latte, Fries": a quantity only when there's more than one. */
+export function orderSummary(order: SavedOrder): string {
+  return order.lines
+    .map((line) => (line.quantity > 1 ? `${line.quantity}× ${line.name}` : line.name))
+    .join(", ");
 }
 
 /** Placeholder rows while the orders load. */
