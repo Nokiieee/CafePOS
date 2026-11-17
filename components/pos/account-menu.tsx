@@ -67,7 +67,10 @@ export function AccountMenu({ name, role }: AccountMenuProps) {
       {open && (
         <div
           id={menuId}
-          className="absolute top-full left-0 z-10 mt-2 w-48 sm:right-0 sm:left-auto rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_-12px_rgb(61_36_25/0.35)] ring-1 ring-latte-200"
+          // z-30: above everything on the page, including the full-screen
+          // receipt and bill on phones (z-20). Popups use the browser's top
+          // layer, so they still cover it.
+          className="absolute top-full left-0 z-30 mt-2 w-48 sm:right-0 sm:left-auto rounded-2xl bg-white p-1.5 shadow-[0_12px_32px_-12px_rgb(61_36_25/0.35)] ring-1 ring-latte-200"
         >
           {/* Who is signed in. The full name here, since the button may cut it short. */}
           <div className="px-3 pt-2 pb-2.5">
