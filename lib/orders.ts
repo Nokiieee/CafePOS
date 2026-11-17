@@ -18,6 +18,14 @@ export type SavedOrderLine = {
   lineTotalCents: number;
 };
 
+/** Who voided an order, when and why (supabase/voids.sql). */
+export type OrderVoid = {
+  reason: string;
+  voidedByName: string;
+  /** The exact moment it was voided (ISO text, in UTC). */
+  voidedAt: string;
+};
+
 /** A saved, paid order with its lines in bill order. Money is in cents. */
 export type SavedOrder = {
   id: string;
@@ -29,14 +37,20 @@ export type SavedOrder = {
   cashReceivedCents: number;
   changeCents: number;
   lines: SavedOrderLine[];
+  /** Set when the order was voided; null for a normal order. */
+  voided: OrderVoid | null;
 };
 
 // The columns to read. "order_items(...)" fetches each order's lines in the
 // same request, through the order_id link between the two tables.
+// "order_voids(...)" works the same way. An order has at most one void
+// (order_id is that table's primary key), so it comes back as one object, or
+// null when the order wasn't voided, instead of a list.
 const ORDER_COLUMNS = `
   id, created_at, cashier_name, order_type,
   total_cents, cash_received_cents, change_cents,
-  order_items ( line_no, name, size, sugar, ice, unit_price_cents, quantity, line_total_cents )
+  order_items ( line_no, name, size, sugar, ice, unit_price_cents, quantity, line_total_cents ),
+  order_voids ( reason, voided_by_name, voided_at )
 `;
 
 /** The shape Supabase sends back for ORDER_COLUMNS (database names, snake_case). */
@@ -58,6 +72,11 @@ type OrderRow = {
     quantity: number;
     line_total_cents: number;
   }[];
+  order_voids: {
+    reason: string;
+    voided_by_name: string;
+    voided_at: string;
+  } | null;
 };
 
 /**
@@ -107,5 +126,12 @@ function toSavedOrder(row: OrderRow): SavedOrder {
       quantity: item.quantity,
       lineTotalCents: item.line_total_cents,
     })),
+    voided: row.order_voids
+      ? {
+          reason: row.order_voids.reason,
+          voidedByName: row.order_voids.voided_by_name,
+          voidedAt: row.order_voids.voided_at,
+        }
+      : null,
   };
 }

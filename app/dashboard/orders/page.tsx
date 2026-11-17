@@ -5,7 +5,7 @@ import { OrderListSkeleton } from "@/components/orders/order-list";
 import { OrdersRail } from "@/components/orders/orders-rail";
 import { OrdersView } from "@/components/orders/orders-view";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getRole } from "@/lib/auth";
 import { cafeToday, formatCafeDay, isCafeDay } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
 import { getOrdersForDay } from "@/lib/orders";
@@ -47,7 +47,7 @@ type DayOrdersProps = {
 
 async function DayOrders({ searchParams }: DayOrdersProps) {
   // Every protected page checks the session itself, not just proxy.ts.
-  await getCurrentUser();
+  const user = await getCurrentUser();
 
   const { date } = await searchParams;
   const today = cafeToday();
@@ -55,8 +55,14 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
   const day = isCafeDay(date) && date <= today ? date : today;
   const isToday = day === today;
 
-  const orders = await getOrdersForDay(day);
-  const sales = orders?.reduce((sum, order) => sum + order.totalCents, 0) ?? 0;
+  // Both at once: neither needs the other's answer.
+  const [role, orders] = await Promise.all([getRole(user), getOrdersForDay(day)]);
+  // Voided orders stay in the list, but they aren't sales.
+  const voidedCount = orders?.filter((order) => order.voided).length ?? 0;
+  const sales =
+    orders
+      ?.filter((order) => !order.voided)
+      .reduce((sum, order) => sum + order.totalCents, 0) ?? 0;
 
   return (
     <section aria-labelledby="orders-day" className="flex flex-1 flex-col gap-4">
@@ -70,6 +76,7 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
         {orders && (
           <p className="text-roast-500">
             {orders.length} {orders.length === 1 ? "order" : "orders"} ·{" "}
+            {voidedCount > 0 && <>{voidedCount} voided · </>}
             <span className="font-semibold text-espresso-900 tabular-nums">
               {formatPrice(sales)}
             </span>{" "}
@@ -80,7 +87,12 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
 
       {orders ? (
         // key={day}: a different day starts fresh, with its newest order picked.
-        <OrdersView key={day} orders={orders} isToday={isToday} />
+        <OrdersView
+          key={day}
+          orders={orders}
+          isToday={isToday}
+          canVoid={role === "admin" && isToday}
+        />
       ) : (
         <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
           The orders couldn&apos;t be loaded. Check the internet connection and refresh the page.

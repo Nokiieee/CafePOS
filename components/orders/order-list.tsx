@@ -37,10 +37,7 @@ type OrderRowProps = {
 function OrderRow({ order, isSelected, onSelect }: OrderRowProps) {
   const itemCount = order.lines.reduce((count, line) => count + line.quantity, 0);
   const orderType = orderTypes.find((type) => type.value === order.orderType)?.label;
-  // "2× Iced Latte, Fries": a quantity only when there's more than one.
-  const summary = order.lines
-    .map((line) => (line.quantity > 1 ? `${line.quantity}× ${line.name}` : line.name))
-    .join(", ");
+  const summary = orderSummary(order);
 
   return (
     <button
@@ -61,11 +58,30 @@ function OrderRow({ order, isSelected, onSelect }: OrderRowProps) {
           {orderType} · {order.cashierName} · {itemCount} {itemCount === 1 ? "item" : "items"}
         </span>
       </span>
-      <span className="shrink-0 font-semibold text-espresso-700 tabular-nums">
-        {formatPrice(order.totalCents)}
+      <span className="flex shrink-0 flex-col items-end gap-1">
+        {/* A voided order's total is crossed out: it no longer counts as a sale. */}
+        <span
+          className={`font-semibold tabular-nums ${
+            order.voided ? "text-roast-500 line-through" : "text-espresso-700"
+          }`}
+        >
+          {formatPrice(order.totalCents)}
+        </span>
+        {order.voided && (
+          <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-xs font-semibold text-red-800">
+            Voided
+          </span>
+        )}
       </span>
     </button>
   );
+}
+
+/** "2× Iced Latte, Fries": a quantity only when there's more than one. */
+export function orderSummary(order: SavedOrder): string {
+  return order.lines
+    .map((line) => (line.quantity > 1 ? `${line.quantity}× ${line.name}` : line.name))
+    .join(", ");
 }
 
 /** Placeholder rows while the orders load. */

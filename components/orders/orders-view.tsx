@@ -1,22 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { PiArrowLeftBold, PiReceipt } from "react-icons/pi";
+import { PiArrowLeftBold, PiProhibitBold, PiReceipt } from "react-icons/pi";
 import type { SavedOrder } from "@/lib/orders";
 import { OrderList } from "./order-list";
 import { OrderReceipt } from "./order-receipt";
+import { VoidDialog } from "./void-dialog";
 
 type OrdersViewProps = {
   orders: SavedOrder[];
   isToday: boolean;
+  /** True for an admin looking at today: only then can orders be voided. */
+  canVoid: boolean;
 };
 
 // The day's list with the picked order's receipt beside it (md and up).
 // On phones there's no room for both, so the receipt opens full-screen.
-export function OrdersView({ orders, isToday }: OrdersViewProps) {
+export function OrdersView({ orders, isToday, canVoid }: OrdersViewProps) {
   // The newest order is picked to begin with, so the receipt column isn't empty.
   const [selectedId, setSelectedId] = useState<string | null>(orders[0]?.id ?? null);
   const [isOpenOnPhone, setIsOpenOnPhone] = useState(false);
+  // True while the Void popup is open for the picked order.
+  const [isVoiding, setIsVoiding] = useState(false);
   const selected = orders.find((order) => order.id === selectedId) ?? orders[0];
 
   if (!selected) {
@@ -49,10 +54,12 @@ export function OrdersView({ orders, isToday }: OrdersViewProps) {
       {/* md and up: a column that stays in view while the list scrolls.
           A very long receipt scrolls inside the column, so its end is reachable
           (-m-1 p-1 leaves room for focus rings, which scrolling would clip).
-          Phones: hidden until a row is tapped, then it covers the screen. */}
+          Phones: hidden until a row is tapped, then it covers the screen.
+          md:z-auto keeps the phone layer (z-20) from staying on at md and up
+          after a row is tapped, where it put the column above the account menu. */}
       <aside
         aria-label="Order receipt"
-        className={`[scrollbar-width:none] md:sticky md:top-0 md:block md:-m-1 md:max-h-[calc(100dvh-4rem)] md:overflow-y-auto md:p-1 ${
+        className={`[scrollbar-width:none] md:sticky md:top-0 md:z-auto md:block md:-m-1 md:max-h-[calc(100dvh-4rem)] md:overflow-y-auto md:p-1 ${
           isOpenOnPhone
             ? "fixed inset-0 z-20 block overflow-y-auto bg-milk px-4 pt-4 pb-8"
             : "hidden"
@@ -67,7 +74,25 @@ export function OrdersView({ orders, isToday }: OrdersViewProps) {
           Back to orders
         </button>
         <OrderReceipt order={selected} />
+
+        {/* Hidden from cashiers, on past days, and once the order is voided.
+            The server and the database check all of this again. */}
+        {canVoid && !selected.voided && (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            onClick={() => setIsVoiding(true)}
+            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white font-semibold text-red-800 ring-1 ring-latte-300 transition-[background-color,box-shadow] duration-200 outline-none hover:bg-red-50 hover:ring-red-200 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-red-100"
+          >
+            <PiProhibitBold aria-hidden className="size-5" />
+            Void order
+          </button>
+        )}
       </aside>
+
+      {/* Outside the receipt column: on phones that column is hidden until a
+          row is tapped, and a popup inside something hidden can't show. */}
+      <VoidDialog order={isVoiding ? selected : null} onClose={() => setIsVoiding(false)} />
     </div>
   );
 }
