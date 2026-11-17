@@ -1,9 +1,9 @@
-import { PiCoffeeBeanFill } from "react-icons/pi";
+import { PiCoffeeBeanFill, PiProhibitBold } from "react-icons/pi";
 import { describeOptions, orderTypes } from "@/components/pos/bill";
 import type { IceLevel, SizeId, SugarLevel } from "@/components/pos/item-options";
-import { formatCafeDateTime } from "@/lib/cafe-time";
+import { formatCafeDateTime, formatCafeTime } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
-import type { SavedOrder, SavedOrderLine } from "@/lib/orders";
+import type { OrderVoid, SavedOrder, SavedOrderLine } from "@/lib/orders";
 
 type OrderReceiptProps = {
   order: SavedOrder;
@@ -24,6 +24,8 @@ export function OrderReceipt({ order }: OrderReceiptProps) {
         </p>
       </header>
 
+      {order.voided && <VoidNotice voided={order.voided} />}
+
       <ul className="mt-5 space-y-3 border-t border-dashed border-latte-300 pt-5">
         {order.lines.map((line) => (
           <ReceiptLine key={line.lineNo} line={line} />
@@ -33,7 +35,9 @@ export function OrderReceipt({ order }: OrderReceiptProps) {
       <dl className="mt-5 space-y-1.5 border-t border-dashed border-latte-300 pt-5">
         <div className="flex justify-between gap-3 text-lg font-semibold">
           <dt>Total</dt>
-          <dd className="tabular-nums">{formatPrice(order.totalCents)}</dd>
+          <dd className={`tabular-nums ${order.voided ? "text-roast-500 line-through" : ""}`}>
+            {formatPrice(order.totalCents)}
+          </dd>
         </div>
         <div className="flex justify-between gap-3 text-roast-500">
           <dt>Cash</dt>
@@ -47,6 +51,23 @@ export function OrderReceipt({ order }: OrderReceiptProps) {
 
       <p className="mt-6 text-center text-sm text-roast-500">Thank you!</p>
     </article>
+  );
+}
+
+// Why this order no longer counts as a sale. Voids only happen on the day of
+// the order, so the time alone is enough.
+function VoidNotice({ voided }: { voided: OrderVoid }) {
+  return (
+    <div className="mt-5 flex items-start gap-2.5 rounded-2xl bg-red-50 px-4 py-3 text-red-800">
+      <PiProhibitBold aria-hidden className="mt-0.5 size-5 shrink-0" />
+      <div className="min-w-0">
+        <p className="font-semibold">Voided</p>
+        <p className="text-sm wrap-break-word">{voided.reason}</p>
+        <p className="mt-1 text-sm">
+          By {voided.voidedByName} at {formatCafeTime(voided.voidedAt)}
+        </p>
+      </div>
+    </div>
   );
 }
 

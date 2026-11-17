@@ -71,7 +71,7 @@ export function AccountMenu({ name, role }: AccountMenuProps) {
         >
           {/* Who is signed in. The full name here, since the button may cut it short. */}
           <div className="px-3 pt-2 pb-2.5">
-            <p className="font-semibold break-words text-espresso-900">{name}</p>
+            <p className="font-semibold wrap-break-word text-espresso-900">{name}</p>
             <p className="text-sm text-roast-500">{ROLE_LABELS[role]}</p>
           </div>
           <hr className="mx-1.5 mb-1.5 border-latte-200" />
