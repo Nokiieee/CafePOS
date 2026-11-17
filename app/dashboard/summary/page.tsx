@@ -3,8 +3,11 @@ import { Suspense } from "react";
 import { DayPicker } from "@/components/orders/day-picker";
 import { PageRail } from "@/components/pos/page-rail";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
+import { SummaryEmpty, SummarySkeleton, SummaryView } from "@/components/summary/summary-view";
 import { requireAdmin } from "@/lib/auth";
-import { cafeDayFromParam, cafeToday, formatCafeDay } from "@/lib/cafe-time";
+import { cafeDayFromParam, cafeToday, formatCafeDay, formatCafeTime } from "@/lib/cafe-time";
+import { getOrdersForDay } from "@/lib/orders";
+import { summarizeDay } from "@/lib/summary";
 
 export const metadata: Metadata = {
   title: "Summary · Cafe POS",
@@ -49,26 +52,38 @@ async function DaySummary({ searchParams }: DaySummaryProps) {
   const { date } = await searchParams;
   const today = cafeToday();
   const day = cafeDayFromParam(date, today);
+  const isToday = day === today;
+
+  // The same orders as the Orders page, with their lines and voids.
+  const orders = await getOrdersForDay(day);
 
   return (
-    <section aria-labelledby="summary-day" className="flex flex-1 flex-col gap-4">
+    <section aria-labelledby="summary-day" className="flex flex-1 flex-col gap-6">
       {/* For screen readers; the picker below shows the same day. */}
       <h2 id="summary-day" className="sr-only">
         Summary for {formatCafeDay(day)}
       </h2>
 
-      <DayPicker basePath="/dashboard/summary" day={day} today={today} />
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <DayPicker basePath="/dashboard/summary" day={day} today={today} />
+        {/* Today's numbers are worked out when the page loads; they don't
+            update by themselves. */}
+        {isToday && orders && orders.length > 0 && (
+          <p className="text-roast-500 tabular-nums">
+            So far today, as of {formatCafeTime(new Date().toISOString())}
+          </p>
+        )}
+      </div>
 
-      <p className="text-roast-500">The day&apos;s numbers come in the next step.</p>
+      {!orders ? (
+        <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
+          The summary couldn&apos;t be loaded. Check the internet connection and refresh the page.
+        </p>
+      ) : orders.length === 0 ? (
+        <SummaryEmpty isToday={isToday} />
+      ) : (
+        <SummaryView summary={summarizeDay(orders)} />
+      )}
     </section>
-  );
-}
-
-/** Shown while the summary loads. */
-function SummarySkeleton() {
-  return (
-    <div aria-busy="true" aria-label="Loading the summary" className="flex flex-col gap-4">
-      <div className="h-11 w-80 max-w-full animate-pulse rounded-xl bg-latte-100 motion-reduce:animate-none" />
-    </div>
   );
 }

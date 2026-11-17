@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 /** One line of a saved order, as the app uses it. Money is in cents. */
 export type SavedOrderLine = {
   lineNo: number;
+  /** The menu item's id ("iced-latte"), the same for every size of a drink. */
+  itemId: string;
   name: string;
   /** Drink options; all null for items without them. */
   size: string | null;
@@ -49,7 +51,7 @@ export type SavedOrder = {
 const ORDER_COLUMNS = `
   id, created_at, cashier_name, order_type,
   total_cents, cash_received_cents, change_cents,
-  order_items ( line_no, name, size, sugar, ice, unit_price_cents, quantity, line_total_cents ),
+  order_items ( line_no, item_id, name, size, sugar, ice, unit_price_cents, quantity, line_total_cents ),
   order_voids ( reason, voided_by_name, voided_at )
 `;
 
@@ -64,6 +66,7 @@ type OrderRow = {
   change_cents: number;
   order_items: {
     line_no: number;
+    item_id: string;
     name: string;
     size: string | null;
     sugar: number | null;
@@ -118,6 +121,7 @@ function toSavedOrder(row: OrderRow): SavedOrder {
     changeCents: row.change_cents,
     lines: row.order_items.map((item) => ({
       lineNo: item.line_no,
+      itemId: item.item_id,
       name: item.name,
       size: item.size,
       sugar: item.sugar,
