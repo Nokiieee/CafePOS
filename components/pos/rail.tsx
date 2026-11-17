@@ -13,7 +13,7 @@ export const TILE_GAP = 8;
 type RailProps = {
   /** The middle: category tiles on the cashier screen. */
   children: ReactNode;
-  /** Pinned to the bottom: links to other pages. */
+  /** Pinned to the bottom: links to other pages, stacked like the tiles above. */
   footer: ReactNode;
 };
 
@@ -28,13 +28,15 @@ export function Rail({ children, footer }: RailProps) {
 
       <div className="flex-1">{children}</div>
 
-      <nav aria-label="Pages">{footer}</nav>
+      <nav aria-label="Pages" className="flex flex-col" style={{ gap: TILE_GAP }}>
+        {footer}
+      </nav>
     </aside>
   );
 }
 
 type RailLinkProps = {
-  href: "/dashboard" | "/dashboard/orders";
+  href: "/dashboard" | "/dashboard/orders" | "/dashboard/summary";
   label: string;
   /** Outline icon, for when this isn't the current page. */
   icon: IconType;

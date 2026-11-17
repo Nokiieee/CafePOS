@@ -11,6 +11,8 @@ import {
 import { formatCafeDay, isCafeDay, shiftCafeDay } from "@/lib/cafe-time";
 
 type DayPickerProps = {
+  /** The page it changes the day of: Orders or Summary. */
+  basePath: "/dashboard/orders" | "/dashboard/summary";
   /** The day being shown, like "2026-11-13". */
   day: string;
   /** Today at the cafe. Later days can't be picked: they have no orders yet. */
@@ -20,7 +22,7 @@ type DayPickerProps = {
 // Previous day, the day itself (tap it to pick from a calendar), next day,
 // and a jump back to Today. Picking a day changes the URL (?date=...), and
 // the page loads that day's orders on the server.
-export function DayPicker({ day, today }: DayPickerProps) {
+export function DayPicker({ basePath, day, today }: DayPickerProps) {
   const router = useRouter();
   // isPending stays true until the new day's orders have arrived.
   const [isPending, startTransition] = useTransition();
@@ -29,7 +31,7 @@ export function DayPicker({ day, today }: DayPickerProps) {
   function goTo(nextDay: string) {
     if (!isCafeDay(nextDay) || nextDay > today || nextDay === day) return;
     // Today has a clean URL with no ?date=.
-    const url = nextDay === today ? "/dashboard/orders" : `/dashboard/orders?date=${nextDay}`;
+    const url = nextDay === today ? basePath : `${basePath}?date=${nextDay}`;
     startTransition(() => router.push(url));
   }
 
@@ -82,7 +84,7 @@ export function DayPicker({ day, today }: DayPickerProps) {
 
       {isPending && (
         <PiSpinnerGap
-          aria-label="Loading orders"
+          aria-label="Loading"
           className="size-5 animate-spin text-roast-500 motion-reduce:animate-none"
         />
       )}

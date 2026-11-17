@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { PiReceipt, PiReceiptFill } from "react-icons/pi";
 import { categories } from "./categories";
 import { Rail, RailLink, TILE_GAP, TILE_HEIGHT } from "./rail";
@@ -7,10 +8,13 @@ import { Rail, RailLink, TILE_GAP, TILE_HEIGHT } from "./rail";
 type CategoryNavProps = {
   selectedId: string;
   onSelect: (id: string) => void;
+  /** Admin-only page tiles (Summary), made on the server. See summary-link.tsx. */
+  adminLinks: ReactNode;
 };
 
-// The cashier screen's rail: the menu categories, and a link to Orders.
-export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
+// The cashier screen's rail: the menu categories, a link to Orders, and the
+// admin-only tiles under it.
+export function CategoryNav({ selectedId, onSelect, adminLinks }: CategoryNavProps) {
   const selectedIndex = Math.max(
     0,
     categories.findIndex((category) => category.id === selectedId),
@@ -19,12 +23,15 @@ export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
   return (
     <Rail
       footer={
-        <RailLink
-          href="/dashboard/orders"
-          label="Orders"
-          icon={PiReceipt}
-          activeIcon={PiReceiptFill}
-        />
+        <>
+          <RailLink
+            href="/dashboard/orders"
+            label="Orders"
+            icon={PiReceipt}
+            activeIcon={PiReceiptFill}
+          />
+          {adminLinks}
+        </>
       }
     >
       <nav aria-label="Menu categories">

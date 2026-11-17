@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DayPicker } from "@/components/orders/day-picker";
 import { OrderListSkeleton } from "@/components/orders/order-list";
-import { OrdersRail } from "@/components/orders/orders-rail";
 import { OrdersView } from "@/components/orders/orders-view";
+import { PageRail } from "@/components/pos/page-rail";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
 import { getCurrentUser, getRole } from "@/lib/auth";
-import { cafeToday, formatCafeDay, isCafeDay } from "@/lib/cafe-time";
+import { cafeDayFromParam, cafeToday, formatCafeDay } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
 import { getOrdersForDay } from "@/lib/orders";
 
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default function OrdersPage({ searchParams }: PageProps<"/dashboard/orders">) {
   return (
     <div className="flex h-dvh bg-milk text-espresso-950">
-      <OrdersRail />
+      <PageRail current="orders" />
 
       <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pt-8 pb-8 [scrollbar-color:var(--color-latte-300)_transparent] sm:px-10">
         <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -51,12 +51,12 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
 
   const { date } = await searchParams;
   const today = cafeToday();
-  // A missing, broken or future date shows today instead.
-  const day = isCafeDay(date) && date <= today ? date : today;
+  const day = cafeDayFromParam(date, today);
   const isToday = day === today;
 
   // Both at once: neither needs the other's answer.
   const [role, orders] = await Promise.all([getRole(user), getOrdersForDay(day)]);
+  const isAdmin = role === "admin";
   // Voided orders stay in the list, but they aren't sales.
   const voidedCount = orders?.filter((order) => order.voided).length ?? 0;
   const sales =
@@ -72,15 +72,22 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
       </h2>
 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <DayPicker day={day} today={today} />
+        <DayPicker basePath="/dashboard/orders" day={day} today={today} />
         {orders && (
           <p className="text-roast-500">
-            {orders.length} {orders.length === 1 ? "order" : "orders"} ·{" "}
-            {voidedCount > 0 && <>{voidedCount} voided · </>}
-            <span className="font-semibold text-espresso-900 tabular-nums">
-              {formatPrice(sales)}
-            </span>{" "}
-            in sales
+            {orders.length} {orders.length === 1 ? "order" : "orders"}
+            {voidedCount > 0 && <> · {voidedCount} voided</>}
+            {/* Sales are for admins only: the cafe takes cash only, so the
+                day's sales say how much money is in the drawer. */}
+            {isAdmin && (
+              <>
+                {" · "}
+                <span className="font-semibold text-espresso-900 tabular-nums">
+                  {formatPrice(sales)}
+                </span>{" "}
+                in sales
+              </>
+            )}
           </p>
         )}
       </div>
@@ -91,7 +98,7 @@ async function DayOrders({ searchParams }: DayOrdersProps) {
           key={day}
           orders={orders}
           isToday={isToday}
-          canVoid={role === "admin" && isToday}
+          canVoid={isAdmin && isToday}
         />
       ) : (
         <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">

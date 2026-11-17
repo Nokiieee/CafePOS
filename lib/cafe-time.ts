@@ -27,6 +27,14 @@ export function isCafeDay(value: unknown): value is string {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
+/**
+ * The day a page should show, from its ?date= value. A missing, broken or
+ * future date gives today, so a bad link still opens something sensible.
+ */
+export function cafeDayFromParam(value: unknown, today: string): string {
+  return isCafeDay(value) && value <= today ? value : today;
+}
+
 /** The day before or after: shiftCafeDay("2026-11-13", -1) is "2026-11-12". */
 export function shiftCafeDay(day: string, days: number): string {
   const date = new Date(`${day}T00:00:00Z`);
