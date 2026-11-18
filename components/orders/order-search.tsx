@@ -44,7 +44,9 @@ export function OrderSearchBox({ initialText }: OrderSearchBoxProps) {
         event.preventDefault();
         search(text);
       }}
-      className="relative w-full max-w-xl"
+      // Fills the rest of the toolbar row beside the day picker; when the row
+      // gets too narrow (iPad portrait, phones) it wraps to a full-width line.
+      className="relative min-w-64 flex-1"
     >
       <label htmlFor={inputId} className="sr-only">
         Search orders by item or amount
@@ -65,7 +67,9 @@ export function OrderSearchBox({ initialText }: OrderSearchBoxProps) {
         placeholder="Search items or an amount"
         value={text}
         onChange={(event) => setText(event.target.value)}
-        className="h-12 w-full appearance-none rounded-2xl border border-roast-400 bg-white pr-12 pl-12 text-espresso-950 caret-espresso-700 transition-[border-color,box-shadow] duration-200 outline-none placeholder:text-roast-500 hover:border-espresso-600 focus:border-espresso-700 focus:ring-2 focus:ring-espresso-700/20 [&::-webkit-search-cancel-button]:hidden"
+        // The same soft latte edge as the day picker beside it, so the two read
+        // as one toolbar; it darkens on hover and turns espresso on focus.
+        className="h-12 w-full appearance-none rounded-2xl border border-latte-300 bg-white pr-12 pl-12 text-espresso-950 caret-espresso-700 transition-[border-color,box-shadow] duration-200 outline-none placeholder:text-roast-500 hover:border-roast-400 focus:border-espresso-700 focus:ring-2 focus:ring-espresso-700/20 [&::-webkit-search-cancel-button]:hidden"
       />
       <div className="absolute top-1/2 right-1.5 -translate-y-1/2">
         {isPending ? (

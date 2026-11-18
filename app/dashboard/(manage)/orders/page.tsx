@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
+import { PiCalendarBlank } from "react-icons/pi";
 import { DayPicker } from "@/components/orders/day-picker";
 import { OrderListSkeleton } from "@/components/orders/order-list";
 import { OrderSearchBox } from "@/components/orders/order-search";
@@ -62,16 +63,29 @@ async function OrdersContent({ searchParams }: OrdersContentProps) {
   // The search as typed, to put back in the box. Empty for the day view.
   const searchText = query && typeof q === "string" ? q.trim() : "";
 
+  return query ? (
+    <SearchResults query={query} searchText={searchText} today={today} user={user} />
+  ) : (
+    <DayOrders day={cafeDayFromParam(date, today)} today={today} user={user} />
+  );
+}
+
+type OrdersToolbarProps = {
+  /** The control on the left: the day picker, or the days a search covers. */
+  children: ReactNode;
+  /** The search in the address, to put back in the box. */
+  searchText: string;
+};
+
+// One row: the day control on the left and the search box filling the rest.
+// When it gets too narrow (iPad portrait, phones), the search box wraps to
+// its own full-width line.
+function OrdersToolbar({ children, searchText }: OrdersToolbarProps) {
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex flex-wrap items-center gap-3">
+      {children}
       {/* key: going Back or Forward to another search refills the box. */}
       <OrderSearchBox key={searchText} initialText={searchText} />
-
-      {query ? (
-        <SearchResults query={query} searchText={searchText} today={today} user={user} />
-      ) : (
-        <DayOrders day={cafeDayFromParam(date, today)} today={today} user={user} />
-      )}
     </div>
   );
 }
@@ -89,16 +103,15 @@ async function DayOrders({ day, today, user }: DayOrdersProps) {
   const isAdmin = role === "admin";
 
   return (
-    <section aria-labelledby="orders-heading" className="flex flex-1 flex-col gap-4">
+    <section aria-labelledby="orders-heading" className="flex flex-1 flex-col gap-6">
       {/* For screen readers; the picker below shows the same day. */}
       <h2 id="orders-heading" className="sr-only">
         Orders for {formatCafeDay(day)}
       </h2>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+      <OrdersToolbar searchText="">
         <DayPicker basePath="/dashboard/orders" day={day} today={today} />
-        {orders && <OrderCounts orders={orders} isAdmin={isAdmin} />}
-      </div>
+      </OrdersToolbar>
 
       {orders ? (
         // key={day}: a different day starts fresh, with its newest order picked.
@@ -107,6 +120,7 @@ async function DayOrders({ day, today, user }: DayOrdersProps) {
           orders={orders}
           today={today}
           isAdmin={isAdmin}
+          listHeader={<OrderCounts orders={orders} isAdmin={isAdmin} />}
           empty={{
             title: day === today ? "No orders yet today" : "No orders on this day",
             description: "Every paid bill shows up here, newest first.",
@@ -136,28 +150,22 @@ async function SearchResults({ query, searchText, today, user }: SearchResultsPr
   const what = query.kind === "amount" ? formatPrice(query.cents) : `“${query.text}”`;
 
   return (
-    <section aria-labelledby="orders-heading" className="flex flex-1 flex-col gap-4">
+    <section aria-labelledby="orders-heading" className="flex flex-1 flex-col gap-6">
       <h2 id="orders-heading" className="sr-only">
         Orders {query.kind === "amount" ? "of" : "with"} {what}
       </h2>
 
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
-        <p className="font-semibold text-espresso-950">
-          Last {SEARCH_DAYS} days
-          <span className="font-normal text-roast-500 tabular-nums">
-            {" · "}
+      <OrdersToolbar searchText={searchText}>
+        {/* Where the day picker sits in the day view: the days searched.
+            The Filters step turns this into a control for picking dates. */}
+        <p className="flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-4 whitespace-nowrap ring-1 ring-latte-300">
+          <PiCalendarBlank aria-hidden className="size-5 text-espresso-700" />
+          <span className="font-semibold text-espresso-950">Last {SEARCH_DAYS} days</span>
+          <span className="text-roast-500 tabular-nums">
             {formatCafeDayShort(days.from)} – {formatCafeDayShort(days.to)}
           </span>
         </p>
-        {result && <OrderCounts orders={result.orders} isAdmin={isAdmin} isPartial={result.hasMore} />}
-      </div>
-
-      {result?.hasMore && (
-        <p className="rounded-2xl bg-latte-100 px-5 py-3 text-sm font-medium text-espresso-900">
-          Showing the newest {MAX_SEARCH_RESULTS} orders. Search for something more specific to see
-          the rest.
-        </p>
-      )}
+      </OrdersToolbar>
 
       {result ? (
         // key: a new search starts fresh, with its newest order picked.
@@ -167,6 +175,17 @@ async function SearchResults({ query, searchText, today, user }: SearchResultsPr
           today={today}
           isAdmin={isAdmin}
           groupByDay
+          listHeader={
+            <>
+              <OrderCounts orders={result.orders} isAdmin={isAdmin} isPartial={result.hasMore} />
+              {result.hasMore && (
+                <p className="mt-1">
+                  Showing the newest {MAX_SEARCH_RESULTS}. Search for something more specific to
+                  see the rest.
+                </p>
+              )}
+            </>
+          }
           empty={{
             title: `No orders ${query.kind === "amount" ? "of" : "with"} ${what}`,
             description:

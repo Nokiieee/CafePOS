@@ -35,8 +35,14 @@ export function DayPicker({ basePath, day, today }: DayPickerProps) {
     startTransition(() => router.push(url));
   }
 
+  // One control in a single white frame, split into segments: ‹ | date | › | Today.
+  // overflow-hidden keeps each segment's hover fill inside the rounded frame;
+  // focus rings are drawn inset for the same reason.
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-busy={isPending}>
+    <div
+      aria-busy={isPending}
+      className="flex h-12 shrink-0 items-stretch overflow-hidden rounded-2xl bg-white ring-1 ring-latte-300"
+    >
       <StepButton label="Previous day" onClick={() => goTo(shiftCafeDay(day, -1))}>
         <PiCaretLeftBold aria-hidden className="size-4" />
       </StepButton>
@@ -45,8 +51,20 @@ export function DayPicker({ basePath, day, today }: DayPickerProps) {
           so a tap lands on the field: iPad Safari then opens its calendar.
           Desktop browsers only open it from a small icon, so showPicker()
           opens it on any click. */}
-      <label className="relative flex h-11 cursor-pointer items-center gap-2 rounded-xl bg-white px-4 font-semibold text-espresso-950 ring-1 ring-latte-300 transition-colors duration-200 select-none has-focus-visible:ring-2 has-focus-visible:ring-espresso-700 hover:bg-latte-100">
-        <PiCalendarBlank aria-hidden className="size-5 text-espresso-700" />
+      <label
+        // On today the date is the last segment, so it takes the frame's full
+        // 16px on the right, like the Today button does on other days.
+        className={`relative flex cursor-pointer items-center gap-2 pl-3 font-semibold whitespace-nowrap ${isToday ? "pr-4" : "pr-3"} text-espresso-950 transition-colors duration-200 select-none hover:bg-latte-100 has-focus-visible:ring-2 has-focus-visible:ring-espresso-700 has-focus-visible:ring-inset`}
+      >
+        {/* While the new day loads, a spinner takes the calendar's place. */}
+        {isPending ? (
+          <PiSpinnerGap
+            aria-label="Loading"
+            className="size-5 animate-spin text-roast-500 motion-reduce:animate-none"
+          />
+        ) : (
+          <PiCalendarBlank aria-hidden className="size-5 text-espresso-700" />
+        )}
         <span>
           {isToday && <span className="text-espresso-700">Today · </span>}
           {formatCafeDay(day)}
@@ -76,21 +94,16 @@ export function DayPicker({ basePath, day, today }: DayPickerProps) {
           <StepButton label="Next day" onClick={() => goTo(shiftCafeDay(day, 1))}>
             <PiCaretRightBold aria-hidden className="size-4" />
           </StepButton>
+          {/* A thin divider sets Today apart from the arrows. */}
+          <span aria-hidden className="my-3 w-px bg-latte-200" />
           <button
             type="button"
             onClick={() => goTo(today)}
-            className="h-11 rounded-xl px-4 font-medium text-espresso-800 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
+            className="px-4 font-medium text-espresso-800 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-inset active:bg-latte-200"
           >
             Today
           </button>
         </>
-      )}
-
-      {isPending && (
-        <PiSpinnerGap
-          aria-label="Loading"
-          className="size-5 animate-spin text-roast-500 motion-reduce:animate-none"
-        />
       )}
     </div>
   );
@@ -108,7 +121,7 @@ function StepButton({ label, onClick, children }: StepButtonProps) {
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="flex size-11 items-center justify-center rounded-xl bg-white text-espresso-800 ring-1 ring-latte-300 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
+      className="flex w-12 shrink-0 items-center justify-center text-espresso-800 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-inset active:bg-latte-200"
     >
       {children}
     </button>

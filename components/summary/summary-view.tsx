@@ -227,7 +227,7 @@ export function SummarySkeleton() {
 
   return (
     <div aria-busy="true" aria-label="Loading the summary" className="flex flex-col gap-6">
-      <div className={`h-11 w-80 max-w-full rounded-xl ${block}`} />
+      <div className={`h-12 w-80 max-w-full rounded-2xl ${block}`} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[0, 1, 2, 3].map((tile) => (
           <div key={tile} className={`h-24 rounded-2xl ${block}`} />

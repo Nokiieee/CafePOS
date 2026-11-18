@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PiArrowLeftBold, PiProhibitBold, PiReceipt } from "react-icons/pi";
 import { cafeDayOf } from "@/lib/cafe-time";
 import type { SavedOrder } from "@/lib/orders";
@@ -18,11 +18,20 @@ type OrdersViewProps = {
   groupByDay?: boolean;
   /** What to say when there are no orders. */
   empty: { title: string; description: string };
+  /** The list card's top band: the count, made on the server. */
+  listHeader?: ReactNode;
 };
 
 // The list with the picked order's receipt beside it (md and up).
 // On phones there's no room for both, so the receipt opens full-screen.
-export function OrdersView({ orders, today, isAdmin, groupByDay = false, empty }: OrdersViewProps) {
+export function OrdersView({
+  orders,
+  today,
+  isAdmin,
+  groupByDay = false,
+  empty,
+  listHeader,
+}: OrdersViewProps) {
   // The newest order is picked to begin with, so the receipt column isn't empty.
   const [selectedId, setSelectedId] = useState<string | null>(orders[0]?.id ?? null);
   const [isOpenOnPhone, setIsOpenOnPhone] = useState(false);
@@ -60,6 +69,7 @@ export function OrdersView({ orders, today, isAdmin, groupByDay = false, empty }
         }}
         groupByDay={groupByDay}
         today={today}
+        header={listHeader}
       />
 
       {/* md and up: a column that stays in view while the list scrolls.

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { orderTypes } from "@/components/pos/bill";
 import { cafeDayOf, formatCafeDay, formatCafeTime, shiftCafeDay } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
@@ -12,44 +13,63 @@ type OrderListProps = {
   groupByDay?: boolean;
   /** Today at the cafe, for the "Today" and "Yesterday" headings. */
   today: string;
+  /** The card's top band, e.g. "4 orders · 1 voided · $104.25 in sales". */
+  header?: ReactNode;
 };
 
-// Orders, newest first: time, what was ordered, and the total.
-// Each row is a button that shows that order's receipt.
-export function OrderList({ orders, selectedId, onSelect, groupByDay = false, today }: OrderListProps) {
+// Orders, newest first, in one white card: an optional header band, then
+// full-width rows split by thin lines. Each row is a button that shows that
+// order's receipt. overflow-hidden keeps the selected row's fill inside the
+// card's rounded corners.
+export function OrderList({
+  orders,
+  selectedId,
+  onSelect,
+  groupByDay = false,
+  today,
+  header,
+}: OrderListProps) {
   function rows(list: SavedOrder[]) {
-    return list.map((order) => (
-      <li key={order.id}>
-        <OrderRow
-          order={order}
-          isSelected={order.id === selectedId}
-          onSelect={() => onSelect(order.id)}
-        />
-      </li>
-    ));
-  }
-
-  if (!groupByDay) {
     return (
-      <ul className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
-        {rows(orders)}
+      <ul className="divide-y divide-latte-200">
+        {list.map((order) => (
+          <li key={order.id}>
+            <OrderRow
+              order={order}
+              isSelected={order.id === selectedId}
+              onSelect={() => onSelect(order.id)}
+            />
+          </li>
+        ))}
       </ul>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
-      {groupOrdersByDay(orders).map(({ day, orders: dayOrders }) => (
-        <section key={day} aria-labelledby={`orders-on-${day}`}>
-          <h3
-            id={`orders-on-${day}`}
-            className="px-4 pt-3 pb-1 text-sm font-semibold text-roast-500"
-          >
-            {dayHeading(day, today)}
-          </h3>
-          <ul className="flex flex-col gap-1">{rows(dayOrders)}</ul>
-        </section>
-      ))}
+    <div className="overflow-hidden rounded-3xl bg-white ring-1 ring-latte-200">
+      {header && (
+        <div className="border-b border-latte-200 bg-milk px-6 py-3.5 text-sm text-roast-500">
+          {header}
+        </div>
+      )}
+
+      {groupByDay
+        ? groupOrdersByDay(orders).map(({ day, orders: dayOrders }, index) => (
+            <section
+              key={day}
+              aria-labelledby={`orders-on-${day}`}
+              className={index > 0 ? "border-t border-latte-200" : undefined}
+            >
+              <h3
+                id={`orders-on-${day}`}
+                className="border-b border-latte-200 bg-milk px-6 py-2 text-sm font-semibold text-roast-500"
+              >
+                {dayHeading(day, today)}
+              </h3>
+              {rows(dayOrders)}
+            </section>
+          ))
+        : rows(orders)}
     </div>
   );
 }
@@ -92,8 +112,10 @@ function OrderRow({ order, isSelected, onSelect }: OrderRowProps) {
       type="button"
       aria-current={isSelected ? "true" : undefined}
       onClick={onSelect}
-      // The highlight only shows from md up: on phones the receipt opens full-screen instead.
-      className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3.5 text-left transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200 ${
+      // The highlight only shows from md up: on phones the receipt opens
+      // full-screen instead. The focus ring is inset, so the card's rounded
+      // corners don't clip it.
+      className={`flex w-full items-center gap-4 px-6 py-4 text-left transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-inset active:bg-latte-200 ${
         isSelected ? "md:bg-latte-100" : "hover:bg-latte-100/60"
       }`}
     >
@@ -132,24 +154,33 @@ export function orderSummary(order: SavedOrder): string {
     .join(", ");
 }
 
-/** Placeholder rows while the orders load. */
+/** Placeholder shapes while the orders load: the toolbar, then the list card. */
 export function OrderListSkeleton() {
+  const block = "animate-pulse bg-latte-100 motion-reduce:animate-none";
+
   return (
-    <div aria-busy="true" aria-label="Loading orders" className="flex flex-col gap-4">
-      {/* The search box, then the day picker. */}
-      <div className="h-12 w-full max-w-xl animate-pulse rounded-2xl bg-latte-100 motion-reduce:animate-none" />
-      <div className="h-6 w-64 animate-pulse rounded-lg bg-latte-100 motion-reduce:animate-none" />
-      <div className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
-        {[0, 1, 2, 3].map((row) => (
-          <div key={row} className="flex items-center gap-4 px-4 py-4">
-            <div className="h-5 w-16 animate-pulse rounded-md bg-latte-100 motion-reduce:animate-none" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-2/3 animate-pulse rounded-md bg-latte-100 motion-reduce:animate-none" />
-              <div className="h-3.5 w-1/3 animate-pulse rounded-md bg-latte-100 motion-reduce:animate-none" />
+    <div aria-busy="true" aria-label="Loading orders" className="flex flex-col gap-6">
+      {/* The day picker and the search box, side by side. */}
+      <div className="flex flex-wrap gap-3">
+        <div className={`h-12 w-80 max-w-full rounded-2xl ${block}`} />
+        <div className={`h-12 min-w-64 flex-1 rounded-2xl ${block}`} />
+      </div>
+      <div className="overflow-hidden rounded-3xl bg-white ring-1 ring-latte-200">
+        <div className="border-b border-latte-200 bg-milk px-6 py-4">
+          <div className={`h-4 w-48 rounded-md ${block}`} />
+        </div>
+        <div className="divide-y divide-latte-200">
+          {[0, 1, 2, 3].map((row) => (
+            <div key={row} className="flex items-center gap-4 px-6 py-5">
+              <div className={`h-5 w-16 rounded-md ${block}`} />
+              <div className="flex-1 space-y-2">
+                <div className={`h-4 w-2/3 rounded-md ${block}`} />
+                <div className={`h-3.5 w-1/3 rounded-md ${block}`} />
+              </div>
+              <div className={`h-5 w-14 rounded-md ${block}`} />
             </div>
-            <div className="h-5 w-14 animate-pulse rounded-md bg-latte-100 motion-reduce:animate-none" />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
