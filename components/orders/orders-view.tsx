@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { PiArrowLeftBold, PiProhibitBold, PiReceipt } from "react-icons/pi";
+import { cafeDayOf } from "@/lib/cafe-time";
 import type { SavedOrder } from "@/lib/orders";
 import { OrderList } from "./order-list";
 import { OrderReceipt } from "./order-receipt";
@@ -9,14 +10,28 @@ import { VoidDialog } from "./void-dialog";
 
 type OrdersViewProps = {
   orders: SavedOrder[];
-  isToday: boolean;
-  /** True for an admin looking at today: only then can orders be voided. */
-  canVoid: boolean;
+  /** Today at the cafe. Only today's orders can be voided. */
+  today: string;
+  /** Admins can void (today's orders only). */
+  isAdmin: boolean;
+  /** Search results span several days, so the list gets day headings. */
+  groupByDay?: boolean;
+  /** What to say when there are no orders. */
+  empty: { title: string; description: string };
+  /** The list card's top band: the count, made on the server. */
+  listHeader?: ReactNode;
 };
 
-// The day's list with the picked order's receipt beside it (md and up).
+// The list with the picked order's receipt beside it (md and up).
 // On phones there's no room for both, so the receipt opens full-screen.
-export function OrdersView({ orders, isToday, canVoid }: OrdersViewProps) {
+export function OrdersView({
+  orders,
+  today,
+  isAdmin,
+  groupByDay = false,
+  empty,
+  listHeader,
+}: OrdersViewProps) {
   // The newest order is picked to begin with, so the receipt column isn't empty.
   const [selectedId, setSelectedId] = useState<string | null>(orders[0]?.id ?? null);
   const [isOpenOnPhone, setIsOpenOnPhone] = useState(false);
@@ -31,14 +46,17 @@ export function OrdersView({ orders, isToday, canVoid }: OrdersViewProps) {
           <PiReceipt aria-hidden className="size-8" />
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-lg font-semibold">
-            {isToday ? "No orders yet today" : "No orders on this day"}
-          </p>
-          <p className="max-w-sm text-roast-500">Every paid bill shows up here, newest first.</p>
+          <p className="text-lg font-semibold">{empty.title}</p>
+          <p className="max-w-sm text-roast-500">{empty.description}</p>
         </div>
       </section>
     );
   }
+
+  // The Void button: admins, an order not voided yet, paid today. Search
+  // results can mix days, so this is checked for each order. The server and
+  // the database check all of this again.
+  const canVoid = isAdmin && !selected.voided && cafeDayOf(selected.createdAt) === today;
 
   return (
     <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -49,6 +67,9 @@ export function OrdersView({ orders, isToday, canVoid }: OrdersViewProps) {
           setSelectedId(id);
           setIsOpenOnPhone(true);
         }}
+        groupByDay={groupByDay}
+        today={today}
+        header={listHeader}
       />
 
       {/* md and up: a column that stays in view while the list scrolls.
@@ -75,9 +96,7 @@ export function OrdersView({ orders, isToday, canVoid }: OrdersViewProps) {
         </button>
         <OrderReceipt order={selected} />
 
-        {/* Hidden from cashiers, on past days, and once the order is voided.
-            The server and the database check all of this again. */}
-        {canVoid && !selected.voided && (
+        {canVoid && (
           <button
             type="button"
             aria-haspopup="dialog"

@@ -8,15 +8,23 @@ export const CAFE_TIME_ZONE = "Asia/Manila";
 // A day is written as "2026-11-13" everywhere in the app, including the URL.
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+// A moment as the cafe's date. The "en-CA" (Canada) format happens to be
+// year-month-day, the app's day format.
+const cafeDayFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: CAFE_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 /** Today's date at the cafe, like "2026-11-13". */
 export function cafeToday(): string {
-  // The "en-CA" (Canada) format happens to be year-month-day.
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: CAFE_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  return cafeDayFormat.format(new Date());
+}
+
+/** The cafe day a moment falls on: an order paid at 11 PM Manila time is that day, not the next. */
+export function cafeDayOf(moment: string): string {
+  return cafeDayFormat.format(new Date(moment));
 }
 
 /** True for a real date like "2026-11-13" (not "2026-02-31" or "hello"). */
@@ -83,6 +91,16 @@ export function formatCafeDay(day: string): string {
     month: "long",
     day: "numeric",
     year: "numeric",
+  }).format(new Date(`${day}T12:00:00Z`));
+}
+
+/** A day, short: "Nov 13". */
+export function formatCafeDayShort(day: string): string {
+  // Noon UTC on that date, shown in UTC, can't slip into the day before or after.
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
   }).format(new Date(`${day}T12:00:00Z`));
 }
 
