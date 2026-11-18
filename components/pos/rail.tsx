@@ -4,7 +4,8 @@ import type { IconType } from "react-icons";
 import { PiCoffeeBeanFill } from "react-icons/pi";
 
 // The latte-colored column on the left of every dashboard page: the logo at
-// the top, the page's own tiles in the middle, and page links at the bottom.
+// the top, the mode's own tiles in the middle (categories in Register mode,
+// pages in Manage mode), and the switch to the other mode at the bottom.
 
 // Tile size and gap, in px. The category puck's position is calculated from these.
 export const TILE_HEIGHT = 76;
@@ -33,6 +34,30 @@ export function Rail({ children, footer }: RailProps) {
       </nav>
     </aside>
   );
+}
+
+// The "puck": one brown fill that glides to the selected tile. It goes first
+// in a list of tiles (the <ul> needs `relative`) and slides behind them, with
+// the same speed and curve everywhere. Screen readers skip it; the tile itself
+// carries aria-current.
+export function RailPuck({ index }: { index: number }) {
+  return (
+    <li
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 rounded-2xl bg-espresso-700 shadow-[0_6px_14px_-6px_rgb(61_36_25/0.55)] transition-transform duration-500 ease-out-expo motion-reduce:transition-none"
+      style={{
+        height: TILE_HEIGHT,
+        transform: `translateY(${index * (TILE_HEIGHT + TILE_GAP)}px)`,
+      }}
+    />
+  );
+}
+
+/** A tile that sits over a puck: milk text when selected, see-through otherwise. */
+export function puckTileClass(isSelected: boolean): string {
+  return `flex w-20 flex-col items-center justify-center gap-1.5 rounded-2xl text-sm font-medium transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-latte-100 ${
+    isSelected ? "text-milk" : "text-roast-500 hover:bg-latte-200 active:bg-latte-300"
+  }`;
 }
 
 type RailLinkProps = {
