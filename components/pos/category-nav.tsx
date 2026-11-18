@@ -1,20 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { PiReceipt, PiReceiptFill } from "react-icons/pi";
+import { PiClipboardText, PiClipboardTextFill } from "react-icons/pi";
 import { categories } from "./categories";
-import { Rail, RailLink, TILE_GAP, TILE_HEIGHT } from "./rail";
+import { puckTileClass, Rail, RailLink, RailPuck, TILE_GAP, TILE_HEIGHT } from "./rail";
 
 type CategoryNavProps = {
   selectedId: string;
   onSelect: (id: string) => void;
-  /** Admin-only page tiles (Summary), made on the server. See summary-link.tsx. */
-  adminLinks: ReactNode;
 };
 
-// The cashier screen's rail: the menu categories, a link to Orders, and the
-// admin-only tiles under it.
-export function CategoryNav({ selectedId, onSelect, adminLinks }: CategoryNavProps) {
+// The rail in Register mode: the menu categories at the top, and Manage at
+// the bottom, which switches to Manage mode (Orders, and Summary for admins).
+// Manage opens Orders, the one page every cashier can use.
+export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
   const selectedIndex = Math.max(
     0,
     categories.findIndex((category) => category.id === selectedId),
@@ -23,28 +21,17 @@ export function CategoryNav({ selectedId, onSelect, adminLinks }: CategoryNavPro
   return (
     <Rail
       footer={
-        <>
-          <RailLink
-            href="/dashboard/orders"
-            label="Orders"
-            icon={PiReceipt}
-            activeIcon={PiReceiptFill}
-          />
-          {adminLinks}
-        </>
+        <RailLink
+          href="/dashboard/orders"
+          label="Manage"
+          icon={PiClipboardText}
+          activeIcon={PiClipboardTextFill}
+        />
       }
     >
       <nav aria-label="Menu categories">
         <ul className="relative flex flex-col" style={{ gap: TILE_GAP }}>
-          {/* The "puck": one brown fill that glides to the selected tile. */}
-          <li
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 rounded-2xl bg-espresso-700 shadow-[0_6px_14px_-6px_rgb(61_36_25/0.55)] transition-transform duration-500 ease-out-expo motion-reduce:transition-none"
-            style={{
-              height: TILE_HEIGHT,
-              transform: `translateY(${selectedIndex * (TILE_HEIGHT + TILE_GAP)}px)`,
-            }}
-          />
+          <RailPuck index={selectedIndex} />
 
           {categories.map((category) => {
             const isSelected = category.id === selectedId;
@@ -56,11 +43,7 @@ export function CategoryNav({ selectedId, onSelect, adminLinks }: CategoryNavPro
                   type="button"
                   aria-current={isSelected ? "true" : undefined}
                   onClick={() => onSelect(category.id)}
-                  className={`flex w-20 flex-col items-center justify-center gap-1.5 rounded-2xl text-sm font-medium transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-latte-100 ${
-                    isSelected
-                      ? "text-milk"
-                      : "text-roast-500 hover:bg-latte-200 active:bg-latte-300"
-                  }`}
+                  className={puckTileClass(isSelected)}
                   style={{ height: TILE_HEIGHT }}
                 >
                   <Icon aria-hidden className="size-7" />
