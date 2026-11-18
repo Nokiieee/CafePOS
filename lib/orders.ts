@@ -1,6 +1,6 @@
 import type { OrderType } from "@/components/pos/bill";
-import { cafeDayRange } from "@/lib/cafe-time";
-import { MAX_SEARCH_RESULTS, type SearchQuery } from "@/lib/order-search";
+import { cafeDayRange, shiftCafeDay } from "@/lib/cafe-time";
+import { MAX_SEARCH_RESULTS, type OrderFilters, type SearchQuery } from "@/lib/order-search";
 import { createClient } from "@/lib/supabase/server";
 
 // Reading saved orders back from Supabase. Server-only: it uses the
@@ -115,13 +115,15 @@ export type OrderSearchResult = { orders: SavedOrder[]; hasMore: boolean };
 
 /**
  * Orders paid from one cafe day to another (both included) that match the
- * search: an item name containing the text, or exactly that total.
- * Supabase does the filtering, so only matching orders are sent back.
+ * search text (an item name containing it, or exactly that total; null for
+ * no text) and the filters. Supabase does the filtering, so only matching
+ * orders are sent back.
  * Returns null if Supabase couldn't be reached or refused.
  */
 export async function searchOrders(
-  query: SearchQuery,
+  query: SearchQuery | null,
   days: { from: string; to: string },
+  filters: OrderFilters,
 ): Promise<OrderSearchResult | null> {
   const start = cafeDayRange(days.from).start;
   const end = cafeDayRange(days.to).end;
@@ -132,21 +134,29 @@ export async function searchOrders(
   // have at least one. The order_items in ORDER_COLUMNS isn't filtered, so the
   // receipt still shows every line of the order.
   const columns =
-    query.kind === "item" ? `${ORDER_COLUMNS}, matched:order_items!inner(line_no)` : ORDER_COLUMNS;
+    query?.kind === "item" ? `${ORDER_COLUMNS}, matched:order_items!inner(line_no)` : ORDER_COLUMNS;
 
-  const request = supabase
+  let request = supabase
     .from("orders")
     .select(columns)
     .gte("created_at", start)
     .lt("created_at", end);
 
-  const filtered =
-    query.kind === "item"
-      ? // ilike: "contains, ignoring capitals". % means "anything" on each side.
-        request.ilike("matched.name", `%${escapeLike(query.text)}%`)
-      : request.eq("total_cents", query.cents);
+  if (query?.kind === "item") {
+    // ilike: "contains, ignoring capitals". % means "anything" on each side.
+    request = request.ilike("matched.name", `%${escapeLike(query.text)}%`);
+  } else if (query?.kind === "amount") {
+    request = request.eq("total_cents", query.cents);
+  }
 
-  const { data, error } = await filtered
+  if (filters.cashier) request = request.eq("cashier_name", filters.cashier);
+  if (filters.orderType !== "all") request = request.eq("order_type", filters.orderType);
+  // order_voids is each order's void, or null when it wasn't voided (see
+  // ORDER_COLUMNS). Filtering on it keeps only voided or only normal orders.
+  if (filters.voided === "only") request = request.not("order_voids", "is", null);
+  if (filters.voided === "none") request = request.is("order_voids", null);
+
+  const { data, error } = await request
     .order("created_at", { ascending: false })
     .order("line_no", { referencedTable: "order_items", ascending: true })
     // One more than shown, to know whether there are more.
@@ -162,6 +172,37 @@ export async function searchOrders(
     orders: data.slice(0, MAX_SEARCH_RESULTS).map(toSavedOrder),
     hasMore: data.length > MAX_SEARCH_RESULTS,
   };
+}
+
+// Enough recent orders to find everyone who has worked lately, without
+// loading a month of orders just for their names.
+const CASHIER_LOOKBACK_DAYS = 30;
+const CASHIER_LOOKBACK_ORDERS = 2000;
+
+/**
+ * The names of cashiers who took orders in the last 30 days, A to Z, for the
+ * Cashier filter. Only the names are read, newest orders first. On an error
+ * it gives an empty list, so the rest of the page still works.
+ */
+export async function getRecentCashierNames(today: string): Promise<string[]> {
+  const start = cafeDayRange(shiftCafeDay(today, -(CASHIER_LOOKBACK_DAYS - 1))).start;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("cashier_name")
+    .gte("created_at", start)
+    .order("created_at", { ascending: false })
+    .limit(CASHIER_LOOKBACK_ORDERS)
+    .overrideTypes<{ cashier_name: string }[], { merge: false }>();
+
+  if (error) {
+    console.error("Loading cashier names failed:", error.message);
+    return [];
+  }
+
+  // A Set keeps each name once.
+  return [...new Set(data.map((row) => row.cashier_name))].sort((a, b) => a.localeCompare(b));
 }
 
 // In ilike, % and _ are wildcards. A backslash before them makes them plain

@@ -1,39 +1,39 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useState } from "react";
 import { PiMagnifyingGlass, PiSpinnerGap, PiX } from "react-icons/pi";
 import { MAX_QUERY_LENGTH } from "@/lib/order-search";
 
 type OrderSearchBoxProps = {
-  /** The search in the address (?q=), or "" for the normal day view. */
+  /** The search text in the address, or "". */
   initialText: string;
+  /** True while the results are on their way. */
+  isPending: boolean;
+  /** Search or filters are on, so × has something to clear. */
+  isSearching: boolean;
+  /** Enter (or the iPad's Search key) was pressed. */
+  onSearch: (text: string) => void;
+  /** × was tapped: clear the text and every filter, back to the day view. */
+  onClear: () => void;
 };
 
-// The search box at the top of Orders. It searches when Enter (or the iPad
+// The search box in the Orders toolbar. It searches when Enter (or the iPad
 // keyboard's Search key) is pressed, not on every letter, so typing stays
 // smooth and Supabase isn't asked over and over.
-//
-// The search goes into the address (?q=latte), and the page searches on the
-// server. So Back, refreshing and bookmarks all keep it.
-export function OrderSearchBox({ initialText }: OrderSearchBoxProps) {
-  const router = useRouter();
+export function OrderSearchBox({
+  initialText,
+  isPending,
+  isSearching,
+  onSearch,
+  onClear,
+}: OrderSearchBoxProps) {
   const inputId = useId();
   const [text, setText] = useState(initialText);
-  // isPending stays true until the results have arrived.
-  const [isPending, startTransition] = useTransition();
-
-  function search(value: string) {
-    const trimmed = value.trim();
-    // Empty: back to the normal day view, with the clean address.
-    const url = trimmed ? `/dashboard/orders?q=${encodeURIComponent(trimmed)}` : "/dashboard/orders";
-    startTransition(() => router.push(url));
-  }
 
   function clear() {
     setText("");
     // Only leave the results if a search is showing; otherwise just empty the box.
-    if (initialText) search("");
+    if (isSearching) onClear();
   }
 
   return (
@@ -42,11 +42,11 @@ export function OrderSearchBox({ initialText }: OrderSearchBoxProps) {
       aria-busy={isPending}
       onSubmit={(event) => {
         event.preventDefault();
-        search(text);
+        onSearch(text);
       }}
-      // Fills the rest of the toolbar row beside the day picker; when the row
-      // gets too narrow (iPad portrait, phones) it wraps to a full-width line.
-      className="relative min-w-64 flex-1"
+      // Fills the space beside the Filters button (the toolbar decides when
+      // the pair wraps to a line of its own).
+      className="relative min-w-0 flex-1"
     >
       <label htmlFor={inputId} className="sr-only">
         Search orders by item or amount
@@ -67,8 +67,8 @@ export function OrderSearchBox({ initialText }: OrderSearchBoxProps) {
         placeholder="Search items or an amount"
         value={text}
         onChange={(event) => setText(event.target.value)}
-        // The same soft latte edge as the day picker beside it, so the two read
-        // as one toolbar; it darkens on hover and turns espresso on focus.
+        // The same soft latte edge as the controls beside it, so they read as
+        // one toolbar; it darkens on hover and turns espresso on focus.
         className="h-12 w-full appearance-none rounded-2xl border border-latte-300 bg-white pr-12 pl-12 text-espresso-950 caret-espresso-700 transition-[border-color,box-shadow] duration-200 outline-none placeholder:text-roast-500 hover:border-roast-400 focus:border-espresso-700 focus:ring-2 focus:ring-espresso-700/20 [&::-webkit-search-cancel-button]:hidden"
       />
       <div className="absolute top-1/2 right-1.5 -translate-y-1/2">
@@ -78,10 +78,10 @@ export function OrderSearchBox({ initialText }: OrderSearchBoxProps) {
             className="m-2 size-5 animate-spin text-roast-500 motion-reduce:animate-none"
           />
         ) : (
-          (text || initialText) && (
+          (text || isSearching) && (
             <button
               type="button"
-              aria-label="Clear search"
+              aria-label={isSearching ? "Clear search and filters" : "Clear search"}
               onClick={clear}
               className="flex size-9 items-center justify-center rounded-xl text-roast-500 transition-colors duration-200 outline-none hover:bg-latte-100 hover:text-espresso-900 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
             >

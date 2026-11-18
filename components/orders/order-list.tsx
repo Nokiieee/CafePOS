@@ -160,10 +160,13 @@ export function OrderListSkeleton() {
 
   return (
     <div aria-busy="true" aria-label="Loading orders" className="flex flex-col gap-6">
-      {/* The day picker and the search box, side by side. */}
+      {/* The toolbar: the day picker, then the search box and Filters. */}
       <div className="flex flex-wrap gap-3">
         <div className={`h-12 w-80 max-w-full rounded-2xl ${block}`} />
-        <div className={`h-12 min-w-64 flex-1 rounded-2xl ${block}`} />
+        <div className="flex min-w-[min(24rem,100%)] flex-1 gap-3">
+          <div className={`h-12 flex-1 rounded-2xl ${block}`} />
+          <div className={`h-12 w-28 rounded-2xl ${block}`} />
+        </div>
       </div>
       <div className="overflow-hidden rounded-3xl bg-white ring-1 ring-latte-200">
         <div className="border-b border-latte-200 bg-milk px-6 py-4">
