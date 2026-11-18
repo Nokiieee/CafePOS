@@ -1,5 +1,6 @@
 import type { OrderType } from "@/components/pos/bill";
 import { cafeDayRange } from "@/lib/cafe-time";
+import { MAX_SEARCH_RESULTS, type SearchQuery } from "@/lib/order-search";
 import { createClient } from "@/lib/supabase/server";
 
 // Reading saved orders back from Supabase. Server-only: it uses the
@@ -107,6 +108,66 @@ export async function getOrdersForDay(day: string): Promise<SavedOrder[] | null>
   }
 
   return data.map(toSavedOrder);
+}
+
+/** Search results, newest first. hasMore: there were more than MAX_SEARCH_RESULTS. */
+export type OrderSearchResult = { orders: SavedOrder[]; hasMore: boolean };
+
+/**
+ * Orders paid from one cafe day to another (both included) that match the
+ * search: an item name containing the text, or exactly that total.
+ * Supabase does the filtering, so only matching orders are sent back.
+ * Returns null if Supabase couldn't be reached or refused.
+ */
+export async function searchOrders(
+  query: SearchQuery,
+  days: { from: string; to: string },
+): Promise<OrderSearchResult | null> {
+  const start = cafeDayRange(days.from).start;
+  const end = cafeDayRange(days.to).end;
+  const supabase = await createClient();
+
+  // For an item search, "matched" is a second copy of each order's lines,
+  // filtered to the lines whose name matches. "!inner" keeps only orders that
+  // have at least one. The order_items in ORDER_COLUMNS isn't filtered, so the
+  // receipt still shows every line of the order.
+  const columns =
+    query.kind === "item" ? `${ORDER_COLUMNS}, matched:order_items!inner(line_no)` : ORDER_COLUMNS;
+
+  const request = supabase
+    .from("orders")
+    .select(columns)
+    .gte("created_at", start)
+    .lt("created_at", end);
+
+  const filtered =
+    query.kind === "item"
+      ? // ilike: "contains, ignoring capitals". % means "anything" on each side.
+        request.ilike("matched.name", `%${escapeLike(query.text)}%`)
+      : request.eq("total_cents", query.cents);
+
+  const { data, error } = await filtered
+    .order("created_at", { ascending: false })
+    .order("line_no", { referencedTable: "order_items", ascending: true })
+    // One more than shown, to know whether there are more.
+    .limit(MAX_SEARCH_RESULTS + 1)
+    .overrideTypes<OrderRow[], { merge: false }>();
+
+  if (error) {
+    console.error("Searching orders failed:", error.message);
+    return null;
+  }
+
+  return {
+    orders: data.slice(0, MAX_SEARCH_RESULTS).map(toSavedOrder),
+    hasMore: data.length > MAX_SEARCH_RESULTS,
+  };
+}
+
+// In ilike, % and _ are wildcards. A backslash before them makes them plain
+// characters, so typing "50%" searches for "50%" and not "50 followed by anything".
+function escapeLike(text: string): string {
+  return text.replace(/[\\%_]/g, (character) => `\\${character}`);
 }
 
 // Database names (snake_case) to the app's names (camelCase).

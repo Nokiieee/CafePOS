@@ -1,5 +1,5 @@
 import { orderTypes } from "@/components/pos/bill";
-import { formatCafeTime } from "@/lib/cafe-time";
+import { cafeDayOf, formatCafeDay, formatCafeTime, shiftCafeDay } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
 import type { SavedOrder } from "@/lib/orders";
 
@@ -8,24 +8,72 @@ type OrderListProps = {
   /** The order whose receipt is showing. */
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Search results span several days, so they're grouped under day headings. */
+  groupByDay?: boolean;
+  /** Today at the cafe, for the "Today" and "Yesterday" headings. */
+  today: string;
 };
 
-// The day's orders, newest first: time, what was ordered, and the total.
+// Orders, newest first: time, what was ordered, and the total.
 // Each row is a button that shows that order's receipt.
-export function OrderList({ orders, selectedId, onSelect }: OrderListProps) {
+export function OrderList({ orders, selectedId, onSelect, groupByDay = false, today }: OrderListProps) {
+  function rows(list: SavedOrder[]) {
+    return list.map((order) => (
+      <li key={order.id}>
+        <OrderRow
+          order={order}
+          isSelected={order.id === selectedId}
+          onSelect={() => onSelect(order.id)}
+        />
+      </li>
+    ));
+  }
+
+  if (!groupByDay) {
+    return (
+      <ul className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
+        {rows(orders)}
+      </ul>
+    );
+  }
+
   return (
-    <ul className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
-      {orders.map((order) => (
-        <li key={order.id}>
-          <OrderRow
-            order={order}
-            isSelected={order.id === selectedId}
-            onSelect={() => onSelect(order.id)}
-          />
-        </li>
+    <div className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
+      {groupOrdersByDay(orders).map(({ day, orders: dayOrders }) => (
+        <section key={day} aria-labelledby={`orders-on-${day}`}>
+          <h3
+            id={`orders-on-${day}`}
+            className="px-4 pt-3 pb-1 text-sm font-semibold text-roast-500"
+          >
+            {dayHeading(day, today)}
+          </h3>
+          <ul className="flex flex-col gap-1">{rows(dayOrders)}</ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
+}
+
+// Consecutive orders on the same cafe day, in the order given (newest first).
+function groupOrdersByDay(orders: SavedOrder[]): { day: string; orders: SavedOrder[] }[] {
+  const groups: { day: string; orders: SavedOrder[] }[] = [];
+  for (const order of orders) {
+    const day = cafeDayOf(order.createdAt);
+    const last = groups[groups.length - 1];
+    if (last?.day === day) {
+      last.orders.push(order);
+    } else {
+      groups.push({ day, orders: [order] });
+    }
+  }
+  return groups;
+}
+
+// "Today", "Yesterday", or "Monday, November 16, 2026".
+function dayHeading(day: string, today: string): string {
+  if (day === today) return "Today";
+  if (day === shiftCafeDay(today, -1)) return "Yesterday";
+  return formatCafeDay(day);
 }
 
 type OrderRowProps = {
@@ -88,6 +136,8 @@ export function orderSummary(order: SavedOrder): string {
 export function OrderListSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading orders" className="flex flex-col gap-4">
+      {/* The search box, then the day picker. */}
+      <div className="h-12 w-full max-w-xl animate-pulse rounded-2xl bg-latte-100 motion-reduce:animate-none" />
       <div className="h-6 w-64 animate-pulse rounded-lg bg-latte-100 motion-reduce:animate-none" />
       <div className="flex flex-col gap-1 rounded-3xl bg-white p-2 ring-1 ring-latte-200">
         {[0, 1, 2, 3].map((row) => (
