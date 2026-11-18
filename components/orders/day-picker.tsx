@@ -20,7 +20,7 @@ type DayPickerProps = {
 };
 
 // Previous day, the day itself (tap it to pick from a calendar), next day,
-// and a jump back to Today. Picking a day changes the URL (?date=...), and
+// and, on other days, a jump back to Today. Picking a day changes the URL (?date=...), and
 // the page loads that day's orders on the server.
 export function DayPicker({ basePath, day, today }: DayPickerProps) {
   const router = useRouter();
@@ -69,18 +69,22 @@ export function DayPicker({ basePath, day, today }: DayPickerProps) {
         />
       </label>
 
-      <StepButton label="Next day" disabled={isToday} onClick={() => goTo(shiftCafeDay(day, 1))}>
-        <PiCaretRightBold aria-hidden className="size-4" />
-      </StepButton>
-
-      <button
-        type="button"
-        disabled={isToday}
-        onClick={() => goTo(today)}
-        className="h-11 rounded-xl px-4 font-medium text-espresso-800 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200 disabled:cursor-default disabled:text-roast-400 disabled:hover:bg-transparent"
-      >
-        Today
-      </button>
+      {/* Only on other days: there's no day after today, and on today the
+          label already says "Today". */}
+      {!isToday && (
+        <>
+          <StepButton label="Next day" onClick={() => goTo(shiftCafeDay(day, 1))}>
+            <PiCaretRightBold aria-hidden className="size-4" />
+          </StepButton>
+          <button
+            type="button"
+            onClick={() => goTo(today)}
+            className="h-11 rounded-xl px-4 font-medium text-espresso-800 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
+          >
+            Today
+          </button>
+        </>
+      )}
 
       {isPending && (
         <PiSpinnerGap
@@ -94,19 +98,17 @@ export function DayPicker({ basePath, day, today }: DayPickerProps) {
 
 type StepButtonProps = {
   label: string;
-  disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
 };
 
-function StepButton({ label, disabled, onClick, children }: StepButtonProps) {
+function StepButton({ label, onClick, children }: StepButtonProps) {
   return (
     <button
       type="button"
       aria-label={label}
-      disabled={disabled}
       onClick={onClick}
-      className="flex size-11 items-center justify-center rounded-xl bg-white text-espresso-800 ring-1 ring-latte-300 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200 disabled:cursor-default disabled:text-roast-400 disabled:ring-latte-200 disabled:hover:bg-white"
+      className="flex size-11 items-center justify-center rounded-xl bg-white text-espresso-800 ring-1 ring-latte-300 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
     >
       {children}
     </button>
