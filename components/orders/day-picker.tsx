@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTransition, type ReactNode } from "react";
 import {
   PiCalendarBlank,
@@ -20,19 +20,30 @@ type DayPickerProps = {
 };
 
 // Previous day, the day itself (tap it to pick from a calendar), next day,
-// and, on other days, a jump back to Today. Picking a day changes the URL (?date=...), and
-// the page loads that day's orders on the server.
+// and, on other days, a jump back to Today. Picking a day changes the URL
+// (?date=...), and the page loads that day's orders on the server.
 export function DayPicker({ basePath, day, today }: DayPickerProps) {
   const router = useRouter();
+  // The address as it is now. Only ?date= changes, so search text and filters
+  // on Orders (?voided=only...) stay on while stepping through days. Reading
+  // it needs Suspense (Cache Components rule); both pages render the picker
+  // inside their Suspense content.
+  const searchParams = useSearchParams();
   // isPending stays true until the new day's orders have arrived.
   const [isPending, startTransition] = useTransition();
   const isToday = day === today;
 
   function goTo(nextDay: string) {
     if (!isCafeDay(nextDay) || nextDay > today || nextDay === day) return;
+    const params = new URLSearchParams(searchParams.toString());
     // Today has a clean URL with no ?date=.
-    const url = nextDay === today ? basePath : `${basePath}?date=${nextDay}`;
-    startTransition(() => router.push(url));
+    if (nextDay === today) {
+      params.delete("date");
+    } else {
+      params.set("date", nextDay);
+    }
+    const query = params.toString();
+    startTransition(() => router.push(query ? `${basePath}?${query}` : basePath));
   }
 
   // One control in a single white frame, split into segments: ‹ | date | › | Today.

@@ -7,6 +7,7 @@ import { formatCafeDayShort, isCafeDay } from "@/lib/cafe-time";
 import {
   activeFilterCount,
   DATE_RANGES,
+  dayLabel,
   DEFAULT_FILTERS,
   filterDays,
   ORDER_TYPE_FILTERS,
@@ -20,6 +21,8 @@ type OrderFiltersDialogProps = {
   filters: OrderFilters;
   /** Cashiers who worked lately, A to Z. */
   cashiers: string[];
+  /** The day the page shows: the Dates filter's first choice. */
+  day: string;
   today: string;
   /** Apply filters was tapped: search with these. */
   onApply: (filters: OrderFilters) => void;
@@ -35,6 +38,7 @@ export function OrderFiltersDialog({
   isOpen,
   filters,
   cashiers,
+  day,
   today,
   onApply,
   onClose,
@@ -76,6 +80,7 @@ export function OrderFiltersDialog({
             titleId={titleId}
             initialFilters={filters}
             cashiers={cashiers}
+            day={day}
             today={today}
             onCancel={close}
             onApply={(nextFilters) => {
@@ -93,15 +98,28 @@ type FiltersFormProps = {
   titleId: string;
   initialFilters: OrderFilters;
   cashiers: string[];
+  day: string;
   today: string;
   onCancel: () => void;
   onApply: (filters: OrderFilters) => void;
 };
 
-function FiltersForm({ titleId, initialFilters, cashiers, today, onCancel, onApply }: FiltersFormProps) {
+function FiltersForm({
+  titleId,
+  initialFilters,
+  cashiers,
+  day,
+  today,
+  onCancel,
+  onApply,
+}: FiltersFormProps) {
   // The picks so far. Nothing changes on the page until Apply filters.
   const [draft, setDraft] = useState(initialFilters);
-  const days = filterDays(draft, today);
+  const days = filterDays(draft, today, day);
+  // The first Dates choice is the day shown: "Today", or its date ("Nov 15").
+  const dateRanges = DATE_RANGES.map((option) =>
+    option.value === "day" ? { ...option, label: dayLabel(day, today) } : option,
+  );
 
   function set(changes: Partial<OrderFilters>) {
     setDraft((current) => ({ ...current, ...changes }));
@@ -131,11 +149,18 @@ function FiltersForm({ titleId, initialFilters, cashiers, today, onCancel, onApp
 
       <div className="space-y-6 p-5 sm:px-7">
         <div>
-          <OptionGroup title="Dates" value={`${formatCafeDayShort(days.from)} – ${formatCafeDayShort(days.to)}`}>
+          <OptionGroup
+            title="Dates"
+            value={
+              days.from === days.to
+                ? formatCafeDayShort(days.from)
+                : `${formatCafeDayShort(days.from)} – ${formatCafeDayShort(days.to)}`
+            }
+          >
             <SegmentedControl
               name="filter-range"
               value={draft.range}
-              options={DATE_RANGES}
+              options={dateRanges}
               onChange={(range) =>
                 // Custom starts from the dates already showing, so nothing jumps.
                 set(range === "custom" ? { range, ...days } : { range, from: null, to: null })

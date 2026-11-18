@@ -21,7 +21,6 @@ import {
   getOrdersForDay,
   getRecentCashierNames,
   searchOrders,
-  type OrderSearchResult,
   type SavedOrder,
 } from "@/lib/orders";
 
@@ -29,10 +28,10 @@ export const metadata: Metadata = {
   title: "Orders · Cafe POS",
 };
 
-// Paid orders: one day at a time (?date=2026-11-13, today when there isn't
-// one), or search results (?q=latte, and/or filters like ?voided=only) across
-// a range of days. The rail around it comes from the Manage layout
-// (app/dashboard/(manage)/layout.tsx).
+// Paid orders. By default one day at a time (?date=2026-11-13, today when
+// there isn't one), with the day picker. Search text and filters narrow that
+// day (?date=...&voided=only), or a range of days (?q=latte&range=7d).
+// The rail around it comes from the Manage layout (app/dashboard/(manage)/layout.tsx).
 export default function OrdersPage({ searchParams }: PageProps<"/dashboard/orders">) {
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pt-8 pb-8 [scrollbar-color:var(--color-latte-300)_transparent] sm:px-10">
@@ -59,7 +58,7 @@ type OrdersContentProps = {
 };
 
 // Reads the address, loads everything at once, then shows the toolbar and
-// either one day's orders (the normal view) or the search results.
+// the orders.
 async function OrdersContent({ searchParams }: OrdersContentProps) {
   // Every protected page checks the session itself, not just proxy.ts.
   const user = await getCurrentUser();
@@ -71,163 +70,127 @@ async function OrdersContent({ searchParams }: OrdersContentProps) {
   const filters = parseOrderFilters(params, today);
   // The search as typed, to put back in the box.
   const searchText = query && typeof params.q === "string" ? params.q.trim() : "";
-  // Any search text or filter turns the page into search results.
-  const isSearching = query !== null || activeFilterCount(filters) > 0;
-  const days = filterDays(filters, today);
+  // Search text or any filter narrows the list; a plain day shows everything.
+  const isFiltered = query !== null || activeFilterCount(filters) > 0;
+  const days = filterDays(filters, today, day);
 
-  // All at once: none of these needs another's answer.
-  const [role, cashiers, dayOrders, searchResult] = await Promise.all([
+  // All at once: none of these needs another's answer. A plain day loads
+  // every order of that day; anything else asks Supabase for the matches.
+  const [role, cashiers, dayOrders, result] = await Promise.all([
     getRole(user),
     getRecentCashierNames(today),
-    isSearching ? null : getOrdersForDay(day),
-    isSearching ? searchOrders(query, days, filters) : null,
+    isFiltered ? null : getOrdersForDay(day),
+    isFiltered ? searchOrders(query, days, filters) : null,
   ]);
   const isAdmin = role === "admin";
+  // null: they couldn't be loaded.
+  const orders = isFiltered ? (result?.orders ?? null) : dayOrders;
+  const hasMore = result?.hasMore ?? false;
+  // A range of days (7 days, 30 days...) instead of the one day.
+  const isRange = filters.range !== "day";
 
-  // The toolbar comes first in both views, so it stays on screen (and an open
-  // filters panel stays open) when the page switches between them.
   return (
     <div className="flex flex-1 flex-col gap-6">
+      {/* The toolbar comes first whatever is shown, so it stays on screen
+          (it doesn't reload) when the results change. */}
       <OrdersToolbar
         dayPicker={<DayPicker basePath="/dashboard/orders" day={day} today={today} />}
-        isSearching={isSearching}
+        day={day}
+        today={today}
         searchText={searchText}
         filters={filters}
         cashiers={cashiers}
-        today={today}
       />
 
-      {isSearching ? (
-        <SearchResults
-          result={searchResult}
-          query={query}
-          searchText={searchText}
-          filters={filters}
-          days={days}
-          today={today}
-          isAdmin={isAdmin}
-        />
-      ) : (
-        <DayOrders orders={dayOrders} day={day} today={today} isAdmin={isAdmin} />
-      )}
+      <section aria-labelledby="orders-heading" className="flex flex-1 flex-col">
+        {/* For screen readers; the toolbar shows the same day or range. */}
+        <h2 id="orders-heading" className="sr-only">
+          {isFiltered ? "Matching orders" : `Orders for ${formatCafeDay(day)}`}
+        </h2>
+
+        {orders ? (
+          // key: a different day, search or filter starts fresh, with its
+          // newest order picked.
+          <OrdersView
+            key={`${day}:${searchText}:${JSON.stringify(filters)}`}
+            orders={orders}
+            today={today}
+            isAdmin={isAdmin}
+            // A range spans several days, so its list gets day headings.
+            groupByDay={isRange}
+            listHeader={
+              <>
+                <OrderCounts orders={orders} isAdmin={isAdmin} isPartial={hasMore} />
+                {hasMore && (
+                  <p className="mt-1">
+                    Showing the newest {MAX_SEARCH_RESULTS}. Search for something more specific or
+                    pick fewer days to see the rest.
+                  </p>
+                )}
+              </>
+            }
+            empty={emptyMessage({ isFiltered, query, filters, day, today, days })}
+          />
+        ) : (
+          <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
+            {isFiltered
+              ? "The search couldn't be finished. Check the internet connection and try again."
+              : "The orders couldn't be loaded. Check the internet connection and refresh the page."}
+          </p>
+        )}
+      </section>
     </div>
   );
 }
 
-type DayOrdersProps = {
-  /** null: they couldn't be loaded. */
-  orders: SavedOrder[] | null;
+type EmptyMessageInput = {
+  isFiltered: boolean;
+  query: SearchQuery | null;
+  filters: OrderFilters;
   day: string;
   today: string;
-  isAdmin: boolean;
-};
-
-// One day's orders. This is the normal view.
-function DayOrders({ orders, day, today, isAdmin }: DayOrdersProps) {
-  return (
-    <section aria-labelledby="orders-heading" className="flex flex-1 flex-col">
-      {/* For screen readers; the day picker shows the same day. */}
-      <h2 id="orders-heading" className="sr-only">
-        Orders for {formatCafeDay(day)}
-      </h2>
-
-      {orders ? (
-        // key={day}: a different day starts fresh, with its newest order picked.
-        <OrdersView
-          key={day}
-          orders={orders}
-          today={today}
-          isAdmin={isAdmin}
-          listHeader={<OrderCounts orders={orders} isAdmin={isAdmin} />}
-          empty={{
-            title: day === today ? "No orders yet today" : "No orders on this day",
-            description: "Every paid bill shows up here, newest first.",
-          }}
-        />
-      ) : (
-        <LoadError message="The orders couldn't be loaded. Check the internet connection and refresh the page." />
-      )}
-    </section>
-  );
-}
-
-type SearchResultsProps = {
-  /** null: the search couldn't be finished. */
-  result: OrderSearchResult | null;
-  query: SearchQuery | null;
-  searchText: string;
-  filters: OrderFilters;
   days: { from: string; to: string };
-  today: string;
-  isAdmin: boolean;
 };
 
-// Orders matching the search text and filters, newest first, under day headings.
-function SearchResults({ result, query, searchText, filters, days, today, isAdmin }: SearchResultsProps) {
-  // "“latte”" or "$12.75", for the headings below.
-  const what = query
-    ? query.kind === "amount"
-      ? formatPrice(query.cents)
-      : `“${query.text}”`
-    : null;
+// What to say when nothing is listed, naming what was looked for and where:
+// "No orders with “mocha”. Nothing in the last 7 days. Check the spelling..."
+function emptyMessage({ isFiltered, query, filters, day, today, days }: EmptyMessageInput) {
+  if (!isFiltered) {
+    return {
+      title: day === today ? "No orders yet today" : "No orders on this day",
+      description: "Every paid bill shows up here, newest first.",
+    };
+  }
+
   const title = !query
     ? "No matching orders"
-    : `No orders ${query.kind === "amount" ? "of" : "with"} ${what}`;
-  const hasFilters = activeFilterCount(filters) > 0;
+    : query.kind === "amount"
+      ? `No orders of ${formatPrice(query.cents)}`
+      : `No orders with “${query.text}”`;
 
-  return (
-    <section aria-labelledby="orders-heading" className="flex flex-1 flex-col">
-      <h2 id="orders-heading" className="sr-only">
-        {what ? `Orders ${query?.kind === "amount" ? "of" : "with"} ${what}` : "Filtered orders"}
-      </h2>
+  const where =
+    filters.range === "day"
+      ? day === today
+        ? "today"
+        : `on ${formatCafeDayShort(day)}`
+      : filters.range === "custom"
+        ? `from ${formatCafeDayShort(days.from)} to ${formatCafeDayShort(days.to)}`
+        : filters.range === "month"
+          ? "this month"
+          : filters.range === "30d"
+            ? "in the last 30 days"
+            : "in the last 7 days";
+  const hasOtherFilters =
+    filters.cashier !== null || filters.orderType !== "all" || filters.voided !== "all";
+  const hint =
+    query?.kind === "item"
+      ? "Check the spelling, or try part of the name."
+      : "Try other dates or filters.";
 
-      {result ? (
-        // key: a new search starts fresh, with its newest order picked.
-        <OrdersView
-          key={`search:${searchText}:${JSON.stringify(filters)}`}
-          orders={result.orders}
-          today={today}
-          isAdmin={isAdmin}
-          groupByDay
-          listHeader={
-            <>
-              <OrderCounts orders={result.orders} isAdmin={isAdmin} isPartial={result.hasMore} />
-              {result.hasMore && (
-                <p className="mt-1">
-                  Showing the newest {MAX_SEARCH_RESULTS}. Search for something more specific or
-                  pick fewer days to see the rest.
-                </p>
-              )}
-            </>
-          }
-          empty={{
-            title,
-            description: `Nothing in ${rangeInWords(filters, days)}${hasFilters ? " with these filters" : ""}. ${
-              query?.kind === "item"
-                ? "Check the spelling, or try part of the name."
-                : "Try other dates or filters."
-            }`,
-          }}
-        />
-      ) : (
-        <LoadError message="The search couldn't be finished. Check the internet connection and try again." />
-      )}
-    </section>
-  );
-}
-
-// "the last 7 days", "this month", "Nov 1 – Nov 15", for the empty message.
-function rangeInWords(filters: OrderFilters, days: { from: string; to: string }): string {
-  switch (filters.range) {
-    case "30d":
-      return "the last 30 days";
-    case "month":
-      return "this month";
-    case "custom":
-      return `${formatCafeDayShort(days.from)} – ${formatCafeDayShort(days.to)}`;
-    default:
-      return "the last 7 days";
-  }
+  return {
+    title,
+    description: `Nothing ${where}${hasOtherFilters ? " with these filters" : ""}. ${hint}`,
+  };
 }
 
 type OrderCountsProps = {
@@ -260,14 +223,6 @@ function OrderCounts({ orders, isAdmin, isPartial = false }: OrderCountsProps) {
           in sales
         </>
       )}
-    </p>
-  );
-}
-
-function LoadError({ message }: { message: string }) {
-  return (
-    <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
-      {message}
     </p>
   );
 }

@@ -16,16 +16,16 @@ import { OrderFiltersDialog } from "./order-filters";
 import { OrderSearchBox } from "./order-search";
 
 type OrdersToolbarProps = {
-  /** The day picker, shown in the normal day view. */
+  /** The day picker, shown while the Dates filter is the one day. */
   dayPicker: ReactNode;
-  /** Search text or filters are on: the page shows results instead of one day. */
-  isSearching: boolean;
+  /** The day the page shows (?date=, or today). */
+  day: string;
+  today: string;
   /** The search text in the address, or "". */
   searchText: string;
   filters: OrderFilters;
   /** Cashiers who worked lately, for the Cashier filter. */
   cashiers: string[];
-  today: string;
 };
 
 // The Orders toolbar: one row with the day control on the left, the search box
@@ -37,24 +37,35 @@ type OrdersToolbarProps = {
 // server.
 export function OrdersToolbar({
   dayPicker,
-  isSearching,
+  day,
+  today,
   searchText,
   filters,
   cashiers,
-  today,
 }: OrdersToolbarProps) {
   const router = useRouter();
   // isPending stays true until the new results have arrived.
   const [isPending, startTransition] = useTransition();
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const count = activeFilterCount(filters);
-  const days = filterDays(filters, today);
+  // A range of days (7 days, 30 days...) instead of the one day.
+  const isRange = filters.range !== "day";
+  const days = filterDays(filters, today, day);
 
   function search(text: string, nextFilters: OrderFilters) {
-    const url = ordersSearchUrl(text, nextFilters);
+    // A range has no single day, so leaving one comes back to today.
+    const url = ordersSearchUrl(text, nextFilters, isRange ? today : day, today);
     // Applying the same filters again changes nothing, so don't search again.
-    if (url === ordersSearchUrl(searchText, filters)) return;
+    if (url === ordersSearchUrl(searchText, filters, day, today)) return;
     startTransition(() => router.push(url));
+  }
+
+  function submitSearch(text: string) {
+    // A new search from the one-day view looks at the last 7 days (the
+    // user's choice), and the Dates filter then shows "7 days", so the popup
+    // always matches the page.
+    const isNewSearch = !searchText && text.trim() !== "" && !isRange;
+    search(text, isNewSearch ? { ...filters, range: "7d" } : filters);
   }
 
   function openFilters() {
@@ -64,7 +75,7 @@ export function OrdersToolbar({
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        {isSearching ? (
+        {isRange ? (
           // In results, the days searched take the day picker's place.
           // Tapping them opens the filters, where the dates are picked.
           <button
@@ -92,8 +103,9 @@ export function OrdersToolbar({
             key={searchText}
             initialText={searchText}
             isPending={isPending}
-            isSearching={isSearching}
-            onSearch={(text) => search(text, filters)}
+            isSearching={searchText !== "" || count > 0}
+            onSearch={submitSearch}
+            // Clears the text and every filter, staying on the day shown.
             onClear={() => search("", DEFAULT_FILTERS)}
           />
 
@@ -120,6 +132,7 @@ export function OrdersToolbar({
         isOpen={isFiltersOpen}
         filters={filters}
         cashiers={cashiers}
+        day={isRange ? today : day}
         today={today}
         onApply={(nextFilters) => search(searchText, nextFilters)}
         onClose={() => setIsFiltersOpen(false)}

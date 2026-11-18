@@ -1,15 +1,16 @@
 import type { OrderType } from "@/components/pos/bill";
-import { isCafeDay, shiftCafeDay } from "@/lib/cafe-time";
+import { formatCafeDayShort, isCafeDay, shiftCafeDay } from "@/lib/cafe-time";
 
 // Searching past orders from the Orders page: the search text and the
 // filters, read from and written to the address. Plain rules shared by the
 // page (server) and the toolbar (browser).
 //
 // The address holds only what differs from the defaults:
-//   ?q=latte&range=30d&cashier=Ana&type=take-out&voided=only
+//   ?date=2026-11-15&voided=only          (one day, filtered)
+//   ?q=latte&range=30d&cashier=Ana&type=take-out
 //   ?range=custom&from=2026-11-01&to=2026-11-15
 
-/** How many days the default range covers, today included. */
+/** How many days a new search covers ("7 days"), today included. */
 export const SEARCH_DAYS = 7;
 
 /** The most results shown at once. More than this asks for a narrower search. */
@@ -46,11 +47,16 @@ export function parseSearchQuery(value: unknown): SearchQuery | null {
 // Filters
 // ---------------------------------------------------------------------------
 
-export type DateRange = "7d" | "30d" | "month" | "custom";
+// "day" is the one day the page shows (?date=, or today): the default, where
+// the day picker stays and the other filters work on that day. The others
+// show results across a range of days.
+export type DateRange = "day" | "7d" | "30d" | "month" | "custom";
 export type OrderTypeFilter = "all" | OrderType;
 export type VoidedFilter = "all" | "none" | "only";
 
+/** The Dates choices. The "day" label is a stand-in: see dayLabel(). */
 export const DATE_RANGES: { value: DateRange; label: string }[] = [
+  { value: "day", label: "Today" },
   { value: "7d", label: "7 days" },
   { value: "30d", label: "30 days" },
   { value: "month", label: "This month" },
@@ -81,7 +87,7 @@ export type OrderFilters = {
 };
 
 export const DEFAULT_FILTERS: OrderFilters = {
-  range: "7d",
+  range: "day",
   from: null,
   to: null,
   cashier: null,
@@ -104,18 +110,18 @@ export function parseOrderFilters(params: SearchParams, today: string): OrderFil
     ORDER_TYPE_FILTERS.find((option) => option.value === param(params, "type"))?.value ?? "all";
   const voided =
     VOIDED_FILTERS.find((option) => option.value === param(params, "voided"))?.value ?? "all";
-  const range = DATE_RANGES.find((option) => option.value === param(params, "range"))?.value ?? "7d";
+  const range = DATE_RANGES.find((option) => option.value === param(params, "range"))?.value ?? "day";
 
   const filters: OrderFilters = { ...DEFAULT_FILTERS, cashier, orderType, voided, range };
 
   if (range === "custom") {
     const from = param(params, "from");
     const to = param(params, "to");
-    // Both real days, in order, and not in the future; otherwise the default range.
+    // Both real days, in order, and not in the future; otherwise the default.
     if (isCafeDay(from) && isCafeDay(to) && from <= to && to <= today) {
       return { ...filters, from, to };
     }
-    return { ...filters, range: "7d" };
+    return { ...filters, range: "day" };
   }
 
   return filters;
@@ -124,16 +130,25 @@ export function parseOrderFilters(params: SearchParams, today: string): OrderFil
 /** How many filters differ from the defaults, for "Filters · 2". */
 export function activeFilterCount(filters: OrderFilters): number {
   return [
-    filters.range !== "7d",
+    filters.range !== "day",
     filters.cashier !== null,
     filters.orderType !== "all",
     filters.voided !== "all",
   ].filter(Boolean).length;
 }
 
-/** The first and last day a search covers, both included. */
-export function filterDays(filters: OrderFilters, today: string): { from: string; to: string } {
+/**
+ * The first and last day a search covers, both included. "day" is the day
+ * the page shows; the ranges count back from today.
+ */
+export function filterDays(
+  filters: OrderFilters,
+  today: string,
+  day: string = today,
+): { from: string; to: string } {
   switch (filters.range) {
+    case "day":
+      return { from: day, to: day };
     case "30d":
       return { from: shiftCafeDay(today, -29), to: today };
     case "month":
@@ -144,6 +159,11 @@ export function filterDays(filters: OrderFilters, today: string): { from: string
       break;
   }
   return { from: shiftCafeDay(today, -(SEARCH_DAYS - 1)), to: today };
+}
+
+/** The "day" choice in words: "Today", or the date the day picker is on, like "Nov 15". */
+export function dayLabel(day: string, today: string): string {
+  return day === today ? "Today" : formatCafeDayShort(day);
 }
 
 /** The range in words: "Last 7 days", "Last 30 days", "This month", "Custom dates". */
@@ -160,15 +180,28 @@ export function rangeLabel(filters: OrderFilters): string {
   }
 }
 
-/** The Orders page address for this search; the bare address when there's nothing to search. */
-export function ordersSearchUrl(text: string, filters: OrderFilters): string {
+/**
+ * The Orders page address for this search; the bare address for today with
+ * nothing to search. day: the day shown when the range is "day".
+ */
+export function ordersSearchUrl(
+  text: string,
+  filters: OrderFilters,
+  day: string,
+  today: string,
+): string {
   const params = new URLSearchParams();
   const trimmed = text.trim();
   if (trimmed) params.set("q", trimmed);
-  if (filters.range !== "7d") params.set("range", filters.range);
-  if (filters.range === "custom" && filters.from && filters.to) {
-    params.set("from", filters.from);
-    params.set("to", filters.to);
+  if (filters.range === "day") {
+    // Today has a clean address, the same as the day picker's.
+    if (day !== today) params.set("date", day);
+  } else {
+    params.set("range", filters.range);
+    if (filters.range === "custom" && filters.from && filters.to) {
+      params.set("from", filters.from);
+      params.set("to", filters.to);
+    }
   }
   if (filters.cashier) params.set("cashier", filters.cashier);
   if (filters.orderType !== "all") params.set("type", filters.orderType);
