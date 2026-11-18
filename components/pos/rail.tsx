@@ -61,7 +61,9 @@ export function puckTileClass(isSelected: boolean): string {
 }
 
 type RailLinkProps = {
-  href: "/dashboard" | "/dashboard/orders" | "/dashboard/summary";
+  // Register mode's Manage tile goes to Orders; Manage mode's Register tile
+  // goes to the cashier screen.
+  href: "/dashboard" | "/dashboard/orders";
   label: string;
   /** Outline icon, for when this isn't the current page. */
   icon: IconType;

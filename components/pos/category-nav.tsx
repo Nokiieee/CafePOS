@@ -1,20 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { PiReceipt, PiReceiptFill } from "react-icons/pi";
+import { PiClipboardText, PiClipboardTextFill } from "react-icons/pi";
 import { categories } from "./categories";
 import { puckTileClass, Rail, RailLink, RailPuck, TILE_GAP, TILE_HEIGHT } from "./rail";
 
 type CategoryNavProps = {
   selectedId: string;
   onSelect: (id: string) => void;
-  /** Admin-only page tiles (Summary), made on the server. See summary-link.tsx. */
-  adminLinks: ReactNode;
 };
 
-// The cashier screen's rail: the menu categories, a link to Orders, and the
-// admin-only tiles under it.
-export function CategoryNav({ selectedId, onSelect, adminLinks }: CategoryNavProps) {
+// The rail in Register mode: the menu categories at the top, and Manage at
+// the bottom, which switches to Manage mode (Orders, and Summary for admins).
+// Manage opens Orders, the one page every cashier can use.
+export function CategoryNav({ selectedId, onSelect }: CategoryNavProps) {
   const selectedIndex = Math.max(
     0,
     categories.findIndex((category) => category.id === selectedId),
@@ -23,15 +21,12 @@ export function CategoryNav({ selectedId, onSelect, adminLinks }: CategoryNavPro
   return (
     <Rail
       footer={
-        <>
-          <RailLink
-            href="/dashboard/orders"
-            label="Orders"
-            icon={PiReceipt}
-            activeIcon={PiReceiptFill}
-          />
-          {adminLinks}
-        </>
+        <RailLink
+          href="/dashboard/orders"
+          label="Manage"
+          icon={PiClipboardText}
+          activeIcon={PiClipboardTextFill}
+        />
       }
     >
       <nav aria-label="Menu categories">
