@@ -112,11 +112,11 @@ function OrderRow({ order, isSelected, onSelect }: OrderRowProps) {
       type="button"
       aria-current={isSelected ? "true" : undefined}
       onClick={onSelect}
-      // The highlight only shows from md up: on phones the receipt opens
-      // full-screen instead. The focus ring is inset, so the card's rounded
-      // corners don't clip it.
+      // The highlight only shows from lg up, where the receipt is beside the
+      // list: below lg it opens full-screen instead (see OrdersView). The focus
+      // ring is inset, so the card's rounded corners don't clip it.
       className={`flex w-full items-center gap-4 px-6 py-4 text-left transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-inset active:bg-latte-200 ${
-        isSelected ? "md:bg-latte-100" : "hover:bg-latte-100/60"
+        isSelected ? "lg:bg-latte-100" : "hover:bg-latte-100/60"
       }`}
     >
       <span className="w-20 shrink-0 font-semibold text-espresso-950 tabular-nums">
