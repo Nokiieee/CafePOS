@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { PiX } from "react-icons/pi";
 import { formatPrice } from "@/lib/format-price";
+import type { MenuItem } from "@/lib/menu";
 import type { ItemChoice } from "./bill";
 import {
   defaultIce,
@@ -15,7 +16,7 @@ import {
   sugarLevels,
   unitPrice,
 } from "./item-options";
-import type { MenuItem } from "./menu-items";
+import { NoPhoto } from "./menu-grid";
 import {
   OptionGroup,
   QuantityStepper,
@@ -123,13 +124,17 @@ function ItemOptions({ item, titleId, descriptionId, onClose, onAdd }: ItemOptio
         {/* Photo with the name, description and price of one beside it. */}
         <div className="flex items-center gap-4 pr-8 sm:gap-5">
           <div className="relative size-24 shrink-0 rounded-2xl bg-white ring-1 ring-latte-200 sm:size-28">
-            <Image
-              src={item.image}
-              alt={item.name}
-              fill
-              sizes="112px"
-              className="object-contain p-1.5 mask-x-from-88% mask-x-to-100% mask-y-from-88% mask-y-to-100%"
-            />
+            {item.image ? (
+              <Image
+                src={item.image}
+                alt={item.name}
+                fill
+                sizes="112px"
+                className="object-contain p-1.5 mask-x-from-88% mask-x-to-100% mask-y-from-88% mask-y-to-100%"
+              />
+            ) : (
+              <NoPhoto />
+            )}
           </div>
           <div className="flex min-w-0 flex-col gap-1">
             <h2

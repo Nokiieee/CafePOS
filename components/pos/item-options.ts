@@ -1,4 +1,4 @@
-import type { MenuItem } from "./menu-items";
+import type { MenuItem } from "@/lib/menu";
 
 // The choices a cashier can make for a drink, kept as data like the menu.
 
@@ -25,13 +25,14 @@ export const defaultIce: IceLevel = "Normal";
 export const MAX_QUANTITY = 99;
 
 // Only drinks get Size, Sugar and Ice. Sides and pasta only get a quantity.
-export function hasDrinkOptions(item: MenuItem): boolean {
+// It only needs the category, so the Menu page can ask before an item exists.
+export function hasDrinkOptions(item: Pick<MenuItem, "categoryId">): boolean {
   return item.categoryId === "coffee";
 }
 
 // The price of one item with the chosen size, in cents.
 // The menu price is the Medium price.
-export function unitPrice(item: MenuItem, size: SizeId): number {
+export function unitPrice(item: Pick<MenuItem, "categoryId" | "price">, size: SizeId): number {
   if (!hasDrinkOptions(item)) return item.price;
   const change = sizes.find((s) => s.id === size)?.priceChange ?? 0;
   return item.price + change;

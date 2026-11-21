@@ -1,3 +1,4 @@
+import type { MenuItem } from "@/lib/menu";
 import {
   hasDrinkOptions,
   sizes,
@@ -6,7 +7,6 @@ import {
   type SizeId,
   type SugarLevel,
 } from "./item-options";
-import type { MenuItem } from "./menu-items";
 
 export type OrderType = "dine-in" | "take-out";
 
