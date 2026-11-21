@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { PiSpinnerGap, PiWarningCircleFill, PiX } from "react-icons/pi";
-import { saveMenuItem, type MenuActionResult } from "@/actions/menu";
+import { saveMenuItem, type MenuActionResult, type PhotoChange } from "@/actions/menu";
 import { hasDrinkOptions, unitPrice } from "@/components/pos/item-options";
 import { OptionGroup, SegmentedControl } from "@/components/pos/option-controls";
 import { formatPrice } from "@/lib/format-price";
@@ -16,6 +16,7 @@ import {
   priceProblem as getPriceProblem,
   priceText,
 } from "@/lib/menu-rules";
+import { PhotoField, type PhotoDraft } from "./photo-field";
 
 type MenuItemDialogProps = {
   /** The item to edit, "new" for Add item, or null when the popup is closed. */
@@ -64,7 +65,7 @@ export function MenuItemDialog({ item, onClose }: MenuItemDialogProps) {
     dialogRef.current?.close();
   }
 
-  async function save(details: unknown) {
+  async function save(details: unknown, photo: PhotoChange) {
     if (!item || isSaving) return;
 
     setIsSaving(true);
@@ -72,7 +73,7 @@ export function MenuItemDialog({ item, onClose }: MenuItemDialogProps) {
 
     let result: MenuActionResult | undefined;
     try {
-      result = await saveMenuItem(item === "new" ? null : item.id, details);
+      result = await saveMenuItem(item === "new" ? null : item.id, details, photo);
     } catch {
       // The request itself failed, so there's no result to read.
       result = undefined;
@@ -129,7 +130,7 @@ type MenuItemFormProps = {
   isSaving: boolean;
   error: string | null;
   onCancel: () => void;
-  onSave: (details: unknown) => void;
+  onSave: (details: unknown, photo: PhotoChange) => void;
 };
 
 function MenuItemForm({ titleId, item, isSaving, error, onCancel, onSave }: MenuItemFormProps) {
@@ -147,6 +148,9 @@ function MenuItemForm({ titleId, item, isSaving, error, onCancel, onSave }: Menu
   // The price hint only turns into a problem after leaving the box, not
   // while a price is half typed.
   const [isPriceTouched, setIsPriceTouched] = useState(false);
+  const [photo, setPhoto] = useState<PhotoDraft>({ kind: "keep" });
+  // True while a picked photo is being cut to a square.
+  const [isPreparingPhoto, setIsPreparingPhoto] = useState(false);
 
   // null when the text isn't a price, which fails the check and keeps Save
   // disabled.
@@ -181,7 +185,11 @@ function MenuItemForm({ titleId, item, isSaving, error, onCancel, onSave }: Menu
       onSubmit={(event) => {
         event.preventDefault();
         setIsPriceTouched(true);
-        if (checked.ok && !isSaving) onSave(checked.item);
+        if (!checked.ok || isSaving || isPreparingPhoto) return;
+        onSave(
+          checked.item,
+          photo.kind === "new" ? photo.photo : photo.kind === "remove" ? "remove" : null,
+        );
       }}
     >
       {/* inert while saving: nothing in here can be tapped or focused, so the
@@ -193,7 +201,7 @@ function MenuItemForm({ titleId, item, isSaving, error, onCancel, onSave }: Menu
           </h2>
           {/* Orders keep their own copy of the name and price (order_items). */}
           {item && (
-            <p className="mt-1 text-roast-500">Past orders keep the name and price they were sold at.</p>
+            <p className="mt-1 text-roast-500">Past orders keep their old name and price.</p>
           )}
         </div>
         <button
@@ -207,6 +215,14 @@ function MenuItemForm({ titleId, item, isSaving, error, onCancel, onSave }: Menu
       </div>
 
       <div inert={isSaving} className="space-y-6 p-5 sm:px-7">
+        <PhotoField
+          current={item?.image ?? null}
+          draft={photo}
+          onChange={setPhoto}
+          isPreparing={isPreparingPhoto}
+          onPreparingChange={setIsPreparingPhoto}
+        />
+
         <div>
           <label htmlFor={nameId} className={`mb-2.5 block ${labelClass}`}>
             Name
@@ -311,12 +327,13 @@ function MenuItemForm({ titleId, item, isSaving, error, onCancel, onSave }: Menu
             {error}
           </p>
         )}
-        {/* Disabled until there's a name and a real price. While saving it
-            keeps its color (aria-disabled, not disabled), so it reads as
-            "working on it" rather than "not allowed". */}
+        {/* Disabled until there's a name and a real price, and while a picked
+            photo is being prepared. While saving it keeps its color
+            (aria-disabled, not disabled), so it reads as "working on it"
+            rather than "not allowed". */}
         <button
           type="submit"
-          disabled={!checked.ok}
+          disabled={!checked.ok || isPreparingPhoto}
           aria-disabled={isSaving}
           className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-espresso-700 text-lg font-semibold text-milk transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk disabled:cursor-not-allowed disabled:bg-latte-200 disabled:text-roast-400 ${
             isSaving ? "cursor-wait" : "hover:bg-espresso-800 active:bg-espresso-900"

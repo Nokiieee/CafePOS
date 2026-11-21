@@ -11,6 +11,15 @@ export const MAX_DESCRIPTION_LENGTH = 200;
 /** $999.99, plenty for a cafe. */
 export const MAX_PRICE_CENTS = 99_999;
 
+/** Menu photos are squares this many pixels wide and tall, like the 17 starting ones. */
+export const PHOTO_SIZE = 800;
+/**
+ * The largest photo the app uploads. An 800 × 800 JPEG is usually 100 to
+ * 250 KB. This stays under the 1 MB a Server Action accepts (and the
+ * bucket's limit, supabase/menu-photos.sql).
+ */
+export const MAX_PHOTO_BYTES = 900 * 1024;
+
 /** The categories an item can be in: the rail's, without "All". */
 export const MENU_CATEGORIES = categories.filter((category) => category.id !== "all");
 
