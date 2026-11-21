@@ -18,6 +18,8 @@ export type Category = {
 };
 
 // The order here is the order in the side navigation.
+// The ids (all but "all", which shows everything) must match the
+// category_id check in supabase/menu.sql, where the menu items live.
 export const categories: Category[] = [
   { id: "all", label: "All", icon: PiSquaresFour, activeIcon: PiSquaresFourFill },
   { id: "coffee", label: "Coffee", icon: BiCoffeeTogo, activeIcon: BiSolidCoffeeTogo },

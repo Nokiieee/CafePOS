@@ -50,9 +50,9 @@ create table if not exists public.order_items (
   -- and keeps receipts in the same order as the bill.
   line_no smallint not null check (line_no > 0),
 
-  -- The menu lives in the app's code (menu-items.ts), not in the database.
-  -- item_id is its id there, like "iced-latte". The name and price are copies
-  -- from the moment of sale, so old orders stay right if the menu changes.
+  -- The menu item's id, like "iced-latte" (menu_items in menu.sql; the menu
+  -- used to live in the app's code). The name and price are copies from the
+  -- moment of sale, so old orders stay right if the menu changes.
   item_id text not null,
   name text not null,
 

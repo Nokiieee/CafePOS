@@ -1,23 +1,32 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { Suspense, use, useState, type ReactNode } from "react";
 import { saveOrder, type SaveOrderResult } from "@/actions/orders";
+import type { MenuItem } from "@/lib/menu";
 import { createOrderId } from "./bill";
 import { BillPanel } from "./bill-panel";
-import { categories } from "./categories";
+import { categories, type Category } from "./categories";
 import { CategoryNav } from "./category-nav";
 import { ChargeDialog } from "./charge-dialog";
 import { ItemDialog } from "./item-dialog";
-import { MenuGrid } from "./menu-grid";
-import { menuItems, type MenuItem } from "./menu-items";
+import { MenuGrid, MenuGridSkeleton } from "./menu-grid";
 import { useCurrentBill } from "./bill-provider";
+
+/** The menu from Supabase, or null when it couldn't be loaded. */
+type MenuPromise = Promise<MenuItem[] | null>;
 
 type PosScreenProps = {
   /** Shown at the top right, e.g. who is signed in. Rendered on the server. */
   account: ReactNode;
+  /**
+   * The menu, still loading when the screen first draws (started in
+   * app/dashboard/page.tsx). Only the parts that need it wait for it, inside
+   * <Suspense>; the rail, the header and the bill show right away.
+   */
+  menu: MenuPromise;
 };
 
-export function PosScreen({ account }: PosScreenProps) {
+export function PosScreen({ account, menu }: PosScreenProps) {
   const [selectedId, setSelectedId] = useState(categories[0].id);
   // The item whose options popup is open, or null when it's closed.
   const [openItem, setOpenItem] = useState<MenuItem | null>(null);
@@ -27,25 +36,24 @@ export function PosScreen({ account }: PosScreenProps) {
   // The bill lives in app/dashboard/layout.tsx, so it survives a trip to Orders.
   const bill = useCurrentBill();
 
-  // Saves the bill as a paid order. Only the item, options and quantity of
-  // each line are sent; the server looks up names and prices itself.
+  // Saves the bill as a paid order. The item, options and quantity of each
+  // line are sent; the server looks up names and prices itself. The price
+  // shown is sent only so the server can tell if it changed meanwhile.
   function saveBill(orderId: string, cashReceivedCents: number): Promise<SaveOrderResult> {
     return saveOrder({
       orderId,
       orderType: bill.orderType,
       cashReceivedCents,
-      lines: bill.lines.map(({ itemId, options, quantity }) => ({ itemId, options, quantity })),
+      lines: bill.lines.map(({ itemId, options, quantity, unitPrice }) => ({
+        itemId,
+        options,
+        quantity,
+        unitPriceCents: unitPrice,
+      })),
     });
   }
   const selected =
     categories.find((category) => category.id === selectedId) ?? categories[0];
-  const Icon = selected.icon;
-
-  // "All" shows everything; any other category shows only its own items.
-  const visibleItems =
-    selected.id === "all"
-      ? menuItems
-      : menuItems.filter((item) => item.categoryId === selected.id);
 
   return (
     <div className="flex h-dvh bg-milk text-espresso-950">
@@ -57,34 +65,17 @@ export function PosScreen({ account }: PosScreenProps) {
             <h1 className="text-3xl font-semibold tracking-tight">
               {selected.id === "all" ? "All items" : selected.label}
             </h1>
-            <span className="text-roast-500">
-              {visibleItems.length}{" "}
-              {visibleItems.length === 1 ? "item" : "items"}
-            </span>
+            {/* Nothing beside the title until the menu arrives. */}
+            <Suspense fallback={null}>
+              <ItemCount menu={menu} categoryId={selected.id} />
+            </Suspense>
           </div>
           <div className="min-w-0 max-w-full">{account}</div>
         </header>
 
-        {visibleItems.length > 0 ? (
-          <MenuGrid items={visibleItems} onSelect={setOpenItem} />
-        ) : (
-          <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
-            <div className="flex size-16 items-center justify-center rounded-full bg-latte-100 text-espresso-700">
-              <Icon aria-hidden className="size-8" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <p className="text-lg font-semibold">
-                {selected.id === "all"
-                  ? "No menu items yet"
-                  : `Nothing in ${selected.label} yet`}
-              </p>
-              <p className="max-w-sm text-roast-500">
-                Items added to the menu will appear here, ready to tap into an
-                order.
-              </p>
-            </div>
-          </section>
-        )}
+        <Suspense fallback={<MenuGridSkeleton />}>
+          <MenuItems menu={menu} category={selected} onSelect={setOpenItem} />
+        </Suspense>
       </main>
 
       {/* The id is made here, in a tap, not while drawing: React can draw
@@ -103,5 +94,71 @@ export function PosScreen({ account }: PosScreenProps) {
         onPaid={bill.clear}
       />
     </div>
+  );
+}
+
+// "All" shows everything; any other category shows only its own items.
+function itemsIn(items: MenuItem[], categoryId: string): MenuItem[] {
+  return categoryId === "all" ? items : items.filter((item) => item.categoryId === categoryId);
+}
+
+type ItemCountProps = {
+  menu: MenuPromise;
+  categoryId: string;
+};
+
+// "9 items", beside the title. use() waits for the menu (the <Suspense>
+// around this shows nothing meanwhile), then gives what it loaded.
+function ItemCount({ menu, categoryId }: ItemCountProps) {
+  const items = use(menu);
+  if (!items) return null;
+
+  const count = itemsIn(items, categoryId).length;
+  return (
+    <span className="text-roast-500">
+      {count} {count === 1 ? "item" : "items"}
+    </span>
+  );
+}
+
+type MenuItemsProps = {
+  menu: MenuPromise;
+  category: Category;
+  onSelect: (item: MenuItem) => void;
+};
+
+// The picked category's items, once the menu has loaded (until then, the
+// <Suspense> around this shows placeholder cards).
+function MenuItems({ menu, category, onSelect }: MenuItemsProps) {
+  const items = use(menu);
+
+  if (!items) {
+    return (
+      <p role="alert" className="rounded-2xl bg-latte-100 px-5 py-4 font-medium text-espresso-900">
+        {"The menu couldn't be loaded. Check the internet connection and refresh the page."}
+      </p>
+    );
+  }
+
+  const visibleItems = itemsIn(items, category.id);
+  if (visibleItems.length > 0) {
+    return <MenuGrid items={visibleItems} onSelect={onSelect} />;
+  }
+
+  const Icon = category.icon;
+  return (
+    <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full bg-latte-100 text-espresso-700">
+        <Icon aria-hidden className="size-8" />
+      </div>
+      <div className="flex flex-col gap-1">
+        <p className="text-lg font-semibold">
+          {category.id === "all" ? "No menu items yet" : `Nothing in ${category.label} yet`}
+        </p>
+        <p className="max-w-sm text-roast-500">
+          Items added to the menu will appear here, ready to tap into an order.
+        </p>
+      </div>
+    </section>
   );
 }

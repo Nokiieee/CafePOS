@@ -1,5 +1,6 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { orderTypes, type DrinkOptions, type OrderType } from "@/components/pos/bill";
 import {
   hasDrinkOptions,
@@ -9,8 +10,8 @@ import {
   sugarLevels,
   unitPrice,
 } from "@/components/pos/item-options";
-import { menuItems } from "@/components/pos/menu-items";
 import { getCurrentUser, getDisplayName } from "@/lib/auth";
+import { getMenuItemsByIds, type MenuItem } from "@/lib/menu";
 import { createClient } from "@/lib/supabase/server";
 
 /** What the payment popup sends when the cashier taps Confirm. */
@@ -19,11 +20,17 @@ export type SaveOrderInput = {
   orderId: string;
   orderType: OrderType;
   cashReceivedCents: number;
-  /** The bill's lines, top to bottom. No names or prices: those come from the menu here. */
+  /** The bill's lines, top to bottom. No names: those come from the menu here. */
   lines: {
     itemId: string;
     options: DrinkOptions | null;
     quantity: number;
+    /**
+     * The price of one, as the bill shows it. Only compared with the menu, to
+     * catch a price that changed while the bill was open. The price saved
+     * always comes from the menu.
+     */
+    unitPriceCents: number;
   }[];
 };
 
@@ -48,6 +55,8 @@ const MAX_CASH_CENTS = 9_999_999;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const CONNECTION_PROBLEM = "The order couldn't be saved. Check the internet connection and try again.";
+
 // Saves a paid bill to Supabase.
 //
 // Anything sent from the browser can be changed by whoever is using it, so
@@ -57,21 +66,33 @@ export async function saveOrder(input: SaveOrderInput): Promise<SaveOrderResult>
   // Signed-out callers are sent to the login page.
   const user = await getCurrentUser();
 
+  const lines = input?.lines;
   if (
     typeof input?.orderId !== "string" ||
     !UUID.test(input.orderId) ||
-    !orderTypes.some((type) => type.value === input.orderType)
+    !orderTypes.some((type) => type.value === input.orderType) ||
+    !Array.isArray(lines) ||
+    lines.length === 0 ||
+    lines.length > MAX_LINES
   ) {
     return { ok: false, message: "Something went wrong with this bill. Please try again." };
   }
 
-  const items = toOrderItems(input.lines);
-  if (!items) {
-    return {
-      ok: false,
-      message: "Something on this bill isn't on the menu anymore. Clear the bill and add the items again.",
-    };
+  // The bill's items as the menu has them now, in the database.
+  const ids = lines.map((line) => line?.itemId).filter((id) => typeof id === "string");
+  const menuItems = await getMenuItemsByIds([...new Set(ids)]);
+  if (!menuItems) {
+    return { ok: false, message: CONNECTION_PROBLEM };
   }
+
+  const checked = toOrderItems(lines, menuItems);
+  if (!checked.ok) {
+    // The menu changed while this bill was open. Refreshing redraws the
+    // Register with the menu as it is now (the bill itself is kept).
+    if (checked.menuChanged) refresh();
+    return { ok: false, message: checked.message };
+  }
+  const items = checked.rows;
 
   const total = items.reduce((sum, item) => sum + item.unit_price_cents * item.quantity, 0);
   const cash = input.cashReceivedCents;
@@ -91,64 +112,87 @@ export async function saveOrder(input: SaveOrderInput): Promise<SaveOrderResult>
   if (error) {
     // The details go to the server log; the cashier gets a plain message.
     console.error("create_order failed:", error.message);
-    return {
-      ok: false,
-      message: "The order couldn't be saved. Check the internet connection and try again.",
-    };
+    return { ok: false, message: CONNECTION_PROBLEM };
   }
 
   return { ok: true };
 }
 
+/** The bill's lines as order_items rows, or why they can't be saved. */
+type CheckedLines =
+  | { ok: true; rows: OrderItemRow[] }
+  | {
+      ok: false;
+      message: string;
+      /** True when the menu changed while the bill was open (not a broken request). */
+      menuChanged: boolean;
+    };
+
 // Turns the bill's lines into order_items rows, with names and prices from
-// the menu. Returns null if any line doesn't match the menu.
-function toOrderItems(lines: SaveOrderInput["lines"]): OrderItemRow[] | null {
-  if (!Array.isArray(lines) || lines.length === 0 || lines.length > MAX_LINES) {
-    return null;
-  }
+// the menu (the bill's items, as getMenuItemsByIds loaded them).
+function toOrderItems(lines: SaveOrderInput["lines"], menuItems: MenuItem[]): CheckedLines {
+  // A line the real Register can't make: an unknown item, a broken quantity
+  // or options. Something went wrong (or someone sent their own request).
+  const broken: CheckedLines = {
+    ok: false,
+    message: "Something on this bill isn't on the menu anymore. Clear the bill and add the items again.",
+    menuChanged: false,
+  };
 
   const rows: OrderItemRow[] = [];
 
   for (const line of lines) {
     const item = menuItems.find((menuItem) => menuItem.id === line?.itemId);
-    if (!item) return null;
+    if (!item) return broken;
+
+    // An admin took it off the menu while this bill was open.
+    if (!item.isOnMenu) {
+      return {
+        ok: false,
+        message: `${item.name} was taken off the menu. Remove it from the bill to continue.`,
+        menuChanged: true,
+      };
+    }
 
     const quantity = line.quantity;
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
-      return null;
+      return broken;
     }
 
+    // Drinks must have a real size, sugar level and ice level. Everything
+    // else has no options, at the menu price.
+    let options: DrinkOptions | null = null;
     if (hasDrinkOptions(item)) {
-      // Drinks must have a real size, sugar level and ice level.
-      const options = line.options;
-      if (!isDrinkOptions(options)) return null;
-
-      rows.push({
-        item_id: item.id,
-        name: item.name,
-        size: options.size,
-        sugar: options.sugar,
-        ice: options.ice,
-        unit_price_cents: unitPrice(item, options.size),
-        quantity,
-      });
-    } else {
-      // Everything else has no options, at the menu price.
-      if (line.options != null) return null;
-
-      rows.push({
-        item_id: item.id,
-        name: item.name,
-        size: null,
-        sugar: null,
-        ice: null,
-        unit_price_cents: item.price,
-        quantity,
-      });
+      if (!isDrinkOptions(line.options)) return broken;
+      options = line.options;
+    } else if (line.options != null) {
+      return broken;
     }
+    const price = options ? unitPrice(item, options.size) : item.price;
+
+    // An admin changed the price while this bill was open. The customer was
+    // asked for the old price, so the new one isn't saved without a word:
+    // the cashier adds the item again, at the new price, and charges again.
+    if (line.unitPriceCents !== price) {
+      return {
+        ok: false,
+        message: `The price of ${item.name} changed. Remove it from the bill and add it again.`,
+        menuChanged: true,
+      };
+    }
+
+    rows.push({
+      item_id: item.id,
+      name: item.name,
+      size: options?.size ?? null,
+      sugar: options?.sugar ?? null,
+      ice: options?.ice ?? null,
+      unit_price_cents: price,
+      quantity,
+    });
   }
 
-  return rows;
+  return { ok: true, rows };
 }
 
 // True only for a size, sugar and ice level that the item popup offers.

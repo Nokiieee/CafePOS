@@ -1,4 +1,4 @@
-import type { MenuItem } from "./menu-items";
+import type { MenuItem } from "@/lib/menu";
 
 // The choices a cashier can make for a drink, kept as data like the menu.
 
