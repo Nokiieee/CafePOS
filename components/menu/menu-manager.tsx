@@ -223,7 +223,7 @@ function OnMenuSwitch({ name, isOn, onToggle }: OnMenuSwitchProps) {
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-[0_1px_3px_rgb(42_24_16/0.3)] transition-transform duration-300 ease-out-expo motion-reduce:transition-none ${
+          className={`absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow-[0_2px_6px_-2px_rgb(61_36_25/0.35)] transition-transform duration-300 ease-out-expo motion-reduce:transition-none ${
             isOn ? "translate-x-5" : "translate-x-0"
           }`}
         />
