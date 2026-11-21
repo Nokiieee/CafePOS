@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  PiBookOpenText,
+  PiBookOpenTextFill,
   PiCashRegister,
   PiCashRegisterFill,
   PiChartBar,
@@ -19,7 +21,7 @@ import {
   TILE_HEIGHT,
 } from "@/components/pos/rail";
 
-// Manage mode's pages, top to bottom. Menu management will join them later.
+// Manage mode's pages, top to bottom.
 const managePages = [
   {
     href: "/dashboard/orders",
@@ -35,10 +37,17 @@ const managePages = [
     activeIcon: PiChartBarFill,
     adminOnly: true,
   },
+  {
+    href: "/dashboard/menu",
+    label: "Menu",
+    icon: PiBookOpenText,
+    activeIcon: PiBookOpenTextFill,
+    adminOnly: true,
+  },
 ] as const;
 
 type ManageRailProps = {
-  /** Admins also get the admin-only pages (Summary). */
+  /** Admins also get the admin-only pages (Summary, Menu). */
   isAdmin: boolean;
 };
 
@@ -46,17 +55,17 @@ type ManageRailProps = {
 // the categories in Register mode, and Register at the bottom to switch back.
 //
 // It lives in the Manage layout (app/dashboard/(manage)/layout.tsx), which
-// stays on screen while moving between Orders and Summary. So the rail isn't
-// drawn again: only the address changes, and the puck slides to the new page.
+// stays on screen while moving between its pages. So the rail isn't drawn
+// again: only the address changes, and the puck slides to the new page.
 export function ManageRail({ isAdmin }: ManageRailProps) {
   const pathname = usePathname();
 
-  // Summary only shows for admins. On the Summary page itself the user must
-  // be an admin (the page checks), so it shows there even before the role is
-  // known. Hiding a tile is only for convenience: each page checks for itself.
-  const pages = managePages.filter(
-    (page) => !page.adminOnly || isAdmin || pathname === page.href,
-  );
+  // Summary and Menu only show for admins. On one of those pages the user
+  // must be an admin (each page checks), so they all show there even before
+  // the role is known, and the tiles don't shift when it arrives. Hiding a
+  // tile is only for convenience: each page checks for itself.
+  const isOnAdminPage = managePages.some((page) => page.adminOnly && page.href === pathname);
+  const pages = managePages.filter((page) => !page.adminOnly || isAdmin || isOnAdminPage);
   const currentIndex = pages.findIndex((page) => page.href === pathname);
 
   return (

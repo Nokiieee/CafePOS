@@ -40,13 +40,26 @@ type MenuItemRow = {
  * (the rail's order), then each category's own order.
  * Returns null if Supabase couldn't be reached or refused.
  */
-export async function getMenu(): Promise<MenuItem[] | null> {
+export function getMenu(): Promise<MenuItem[] | null> {
+  return loadMenu({ onlyOnMenu: true });
+}
+
+/**
+ * Every item, including those taken off the menu, in the same order as
+ * getMenu(). For the Menu page, where admins switch them back on.
+ * Returns null if Supabase couldn't be reached or refused.
+ */
+export function getAllMenuItems(): Promise<MenuItem[] | null> {
+  return loadMenu({ onlyOnMenu: false });
+}
+
+async function loadMenu({ onlyOnMenu }: { onlyOnMenu: boolean }): Promise<MenuItem[] | null> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("menu_items")
-    .select(MENU_COLUMNS)
-    .eq("is_on_menu", true)
+  let request = supabase.from("menu_items").select(MENU_COLUMNS);
+  if (onlyOnMenu) request = request.eq("is_on_menu", true);
+
+  const { data, error } = await request
     .order("sort_order", { ascending: true })
     // Two items with the same place: A to Z.
     .order("name", { ascending: true })
