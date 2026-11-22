@@ -57,7 +57,8 @@ export function ShowAll({ label, title, subtitle, children }: ShowAllProps) {
           if (event.target === event.currentTarget) dialogRef.current?.close();
         }}
         // A column only while open (a closed <dialog> must stay hidden): the
-        // head stays put and the list scrolls under it.
+        // head stays put and the list scrolls under it. The popup has no set
+        // height, only a max, so it's as tall as the list, up to the screen.
         className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-3xl bg-white p-0 text-espresso-950 shadow-[0_24px_64px_-16px_rgb(42_24_16/0.45)] transition-[opacity,translate] duration-300 ease-out-expo backdrop:bg-espresso-950/40 open:flex open:flex-col motion-reduce:transition-none starting:open:translate-y-4 starting:open:opacity-0"
       >
         <div className="flex items-start gap-4 px-5 pt-5 pb-3 sm:px-7 sm:pt-6">
@@ -77,10 +78,15 @@ export function ShowAll({ label, title, subtitle, children }: ShowAllProps) {
           </button>
         </div>
 
+        {/* No flex-1 here: it means "start at 0% tall", and with no set
+            height to take 0% of, iOS Safari (WebKit) kept the list at 0 and
+            showed only the column titles. Starting from the list's own
+            height works everywhere; min-h-0 lets it shrink and scroll once
+            the popup reaches its max. */}
         <div
           ref={contentRef}
           tabIndex={-1}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 outline-none [scrollbar-color:var(--color-latte-300)_transparent] sm:px-7 sm:pb-6"
+          className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 outline-none [scrollbar-color:var(--color-latte-300)_transparent] sm:px-7 sm:pb-6"
         >
           {/* Only drawn while open: a long list costs nothing until it's asked for. */}
           {isOpen && children}
