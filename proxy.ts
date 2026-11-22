@@ -31,12 +31,12 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  // Checks the session and refreshes it if it has expired.
-  // Don't put any code between createServerClient and this call.
-  const { data } = await supabase.auth.getClaims();
-  const isSignedIn = Boolean(data?.claims);
-
   const { pathname } = request.nextUrl;
+
+  // Checks the session and refreshes it if it has expired.
+  // Don't put any code between createServerClient and these calls.
+  const isSignedIn =
+    pathname === "/" ? await isSessionAlive(supabase) : await hasValidToken(supabase);
 
   if (!isSignedIn && pathname.startsWith("/dashboard")) {
     return redirectTo(request, response, "/");
@@ -47,6 +47,30 @@ export async function proxy(request: NextRequest) {
   }
 
   return response;
+}
+
+type SupabaseClient = ReturnType<typeof createServerClient>;
+
+// The fast check, for every page but the login page: is the sign-in token in
+// the cookies real and not expired? getClaims() checks its signature here,
+// without asking Supabase, so it can't know if the session was ended
+// elsewhere (Sign out signs out every device). The pages find out with
+// getCurrentUser(), which asks Supabase, and send the visitor to "/".
+async function hasValidToken(supabase: SupabaseClient): Promise<boolean> {
+  const { data } = await supabase.auth.getClaims();
+  return Boolean(data?.claims);
+}
+
+// The sure check, for the login page only: getUser() asks Supabase whether
+// the session is still alive. With the fast check here, a session ended on
+// another device bounced the browser between "/" and "/dashboard" until the
+// token expired (up to an hour): the token still looked fine here, but
+// Supabase told the page it was gone. When the session is gone, getUser()
+// also deletes its cookies, which the proxy can do and a page can't. One
+// extra trip to Supabase, only when the login page opens.
+async function isSessionAlive(supabase: SupabaseClient): Promise<boolean> {
+  const { data } = await supabase.auth.getUser();
+  return Boolean(data.user);
 }
 
 // Redirect, but keep any refreshed session cookies from `response`.
