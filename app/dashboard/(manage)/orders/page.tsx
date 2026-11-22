@@ -7,10 +7,10 @@ import { OrdersView } from "@/components/orders/orders-view";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
 import { getCurrentUser, getRole } from "@/lib/auth";
 import { cafeDayFromParam, cafeToday, formatCafeDay, formatCafeDayShort } from "@/lib/cafe-time";
+import { filterDays } from "@/lib/date-range";
 import { formatPrice } from "@/lib/format-price";
 import {
   activeFilterCount,
-  filterDays,
   MAX_SEARCH_RESULTS,
   parseOrderFilters,
   parseSearchQuery,

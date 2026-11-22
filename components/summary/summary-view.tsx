@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { PiChartBar } from "react-icons/pi";
 import { formatCafeTime } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
-import type { DaySummary } from "@/lib/summary";
+import type { OrdersSummary } from "@/lib/summary";
 
 // The end-of-day summary's sections: the four headline numbers, then what
 // sold on the left and the breakdowns on the right (one column on phones).
 // Nothing here can be tapped, so it's drawn on the server.
-export function SummaryView({ summary }: { summary: DaySummary }) {
+export function SummaryView({ summary }: { summary: OrdersSummary }) {
   return (
     <div className="flex flex-col gap-6">
       <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -78,7 +78,7 @@ function Card({ title, aside, children }: CardProps) {
   );
 }
 
-function ItemsCard({ items }: { items: DaySummary["items"] }) {
+function ItemsCard({ items }: { items: OrdersSummary["items"] }) {
   return (
     <Card title="Items sold">
       {items.length === 0 ? (
@@ -109,7 +109,7 @@ function ItemsCard({ items }: { items: DaySummary["items"] }) {
   );
 }
 
-function OrderTypesCard({ orderTypes }: { orderTypes: DaySummary["orderTypes"] }) {
+function OrderTypesCard({ orderTypes }: { orderTypes: OrdersSummary["orderTypes"] }) {
   return (
     <Card title="Dine In and Take Out">
       <dl className="divide-y divide-latte-200">
@@ -127,7 +127,7 @@ function OrderTypesCard({ orderTypes }: { orderTypes: DaySummary["orderTypes"] }
   );
 }
 
-function CashiersCard({ cashiers }: { cashiers: DaySummary["cashiers"] }) {
+function CashiersCard({ cashiers }: { cashiers: OrdersSummary["cashiers"] }) {
   return (
     <Card title="By cashier">
       <table className="w-full text-left">
@@ -163,7 +163,7 @@ function CashiersCard({ cashiers }: { cashiers: DaySummary["cashiers"] }) {
   );
 }
 
-function VoidsCard({ voids }: { voids: DaySummary["voids"] }) {
+function VoidsCard({ voids }: { voids: OrdersSummary["voids"] }) {
   const count = voids.orders.length;
 
   return (
@@ -200,22 +200,27 @@ function VoidsCard({ voids }: { voids: DaySummary["voids"] }) {
   );
 }
 
-/** Shown for a day with no orders at all. */
-export function SummaryEmpty({ isToday }: { isToday: boolean }) {
+type SummaryEmptyProps = {
+  /** What's shown: today, another single day, or a range of days. */
+  shown: "today" | "day" | "range";
+};
+
+/** Shown when there are no orders at all for the day or the dates. */
+export function SummaryEmpty({ shown }: SummaryEmptyProps) {
+  const text = {
+    today: { title: "No sales yet today", description: "The summary fills in as orders are paid." },
+    day: { title: "No sales on this day", description: "Pick another day to see its summary." },
+    range: { title: "No sales in these dates", description: "Pick other dates to see their summary." },
+  }[shown];
+
   return (
     <section className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
       <div className="flex size-16 items-center justify-center rounded-full bg-latte-100 text-espresso-700">
         <PiChartBar aria-hidden className="size-8" />
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-lg font-semibold">
-          {isToday ? "No sales yet today" : "No sales on this day"}
-        </p>
-        <p className="max-w-sm text-roast-500">
-          {isToday
-            ? "The summary fills in as orders are paid."
-            : "Pick another day to see its summary."}
-        </p>
+        <p className="text-lg font-semibold">{text.title}</p>
+        <p className="max-w-sm text-roast-500">{text.description}</p>
       </div>
     </section>
   );

@@ -1,14 +1,20 @@
 import { orderTypes, type OrderType } from "@/components/pos/bill";
 import type { SavedOrder } from "@/lib/orders";
 
-// The end-of-day summary, worked out from one day's orders (as loaded by
-// getOrdersForDay). It only adds things up: no database, no screen.
+// The summary, worked out from the orders of one day or a range of days (as
+// loaded by getOrdersBetween). It only adds things up: no database, no screen.
 //
 // Voided orders aren't sales. They're left out of every number except the
 // Voids section, where they're counted on their own.
 // Money stays in cents, like everywhere else in the app.
 
-/** One menu item's sales for the day. All sizes of a drink are counted together. */
+/**
+ * The longest range a summary covers (about 3 months, the user's choice).
+ * Every order in the range is loaded, so longer ranges would get slow.
+ */
+export const MAX_SUMMARY_DAYS = 92;
+
+/** One menu item's sales. All sizes of a drink are counted together. */
 export type ItemSales = {
   itemId: string;
   name: string;
@@ -24,7 +30,7 @@ export type OrderTypeSales = {
   salesCents: number;
 };
 
-/** One cashier's day. Their voids are orders they charged that were voided later. */
+/** One cashier's sales. Their voids are orders they charged that were voided later. */
 export type CashierSales = {
   name: string;
   orders: number;
@@ -32,7 +38,7 @@ export type CashierSales = {
   voids: number;
 };
 
-export type DaySummary = {
+export type OrdersSummary = {
   salesCents: number;
   /** Orders that count as sales (not voided). */
   orderCount: number;
@@ -50,7 +56,7 @@ export type DaySummary = {
   voids: { orders: SavedOrder[]; totalCents: number };
 };
 
-export function summarizeDay(orders: SavedOrder[]): DaySummary {
+export function summarizeOrders(orders: SavedOrder[]): OrdersSummary {
   const sold = orders.filter((order) => !order.voided);
   const voided = orders.filter((order) => order.voided);
 
@@ -90,7 +96,7 @@ function itemSales(orders: SavedOrder[]): ItemSales[] {
         item.salesCents += line.lineTotalCents;
       } else {
         // Orders come newest first, so the first name seen is the newest one,
-        // in case the item was renamed during the day.
+        // in case the item was renamed along the way.
         byItem.set(line.itemId, {
           itemId: line.itemId,
           name: line.name,

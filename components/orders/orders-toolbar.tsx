@@ -4,12 +4,11 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 import { PiCalendarBlank, PiSlidersHorizontal } from "react-icons/pi";
 import { formatCafeDayShort } from "@/lib/cafe-time";
+import { filterDays, rangeLabel } from "@/lib/date-range";
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
-  filterDays,
   ordersSearchUrl,
-  rangeLabel,
   type OrderFilters,
 } from "@/lib/order-search";
 import { OrderFiltersDialog } from "./order-filters";
