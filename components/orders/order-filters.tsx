@@ -3,17 +3,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { PiCaretDown, PiX } from "react-icons/pi";
 import { OptionGroup, SegmentedControl } from "@/components/pos/option-controls";
-import { formatCafeDayShort, isCafeDay } from "@/lib/cafe-time";
 import {
   activeFilterCount,
-  DATE_RANGES,
-  dayLabel,
   DEFAULT_FILTERS,
-  filterDays,
   ORDER_TYPE_FILTERS,
   VOIDED_FILTERS,
   type OrderFilters,
 } from "@/lib/order-search";
+import { DatesField } from "./dates-field";
 
 type OrderFiltersDialogProps = {
   isOpen: boolean;
@@ -115,11 +112,6 @@ function FiltersForm({
 }: FiltersFormProps) {
   // The picks so far. Nothing changes on the page until Apply filters.
   const [draft, setDraft] = useState(initialFilters);
-  const days = filterDays(draft, today, day);
-  // The first Dates choice is the day shown: "Today", or its date ("Nov 15").
-  const dateRanges = DATE_RANGES.map((option) =>
-    option.value === "day" ? { ...option, label: dayLabel(day, today) } : option,
-  );
 
   function set(changes: Partial<OrderFilters>) {
     setDraft((current) => ({ ...current, ...changes }));
@@ -148,43 +140,13 @@ function FiltersForm({
       </div>
 
       <div className="space-y-6 p-5 sm:px-7">
-        <div>
-          <OptionGroup
-            title="Dates"
-            value={
-              days.from === days.to
-                ? formatCafeDayShort(days.from)
-                : `${formatCafeDayShort(days.from)} – ${formatCafeDayShort(days.to)}`
-            }
-          >
-            <SegmentedControl
-              name="filter-range"
-              value={draft.range}
-              options={dateRanges}
-              onChange={(range) =>
-                // Custom starts from the dates already showing, so nothing jumps.
-                set(range === "custom" ? { range, ...days } : { range, from: null, to: null })
-              }
-            />
-          </OptionGroup>
-          {draft.range === "custom" && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <DateField
-                label="From"
-                value={days.from}
-                max={today}
-                // Moving From past To moves To along, so the range stays in order.
-                onChange={(from) => set({ from, to: from > days.to ? from : days.to })}
-              />
-              <DateField
-                label="To"
-                value={days.to}
-                max={today}
-                onChange={(to) => set({ to, from: to < days.from ? to : days.from })}
-              />
-            </div>
-          )}
-        </div>
+        <DatesField
+          name="filter-range"
+          value={draft}
+          onChange={(dates) => set(dates)}
+          day={day}
+          today={today}
+        />
 
         <CashierField
           cashiers={cashiers}
@@ -278,44 +240,5 @@ function CashierField({ cashiers, value, onChange }: CashierFieldProps) {
         />
       </div>
     </div>
-  );
-}
-
-type DateFieldProps = {
-  label: string;
-  value: string;
-  max: string;
-  onChange: (day: string) => void;
-};
-
-// A day for a custom range. As in the day picker, an invisible date field
-// covers the label, so a tap opens the iPad's calendar; showPicker() does the
-// same on desktop browsers.
-function DateField({ label, value, max, onChange }: DateFieldProps) {
-  return (
-    <label className="relative flex h-13 cursor-pointer flex-col justify-center rounded-2xl bg-white px-4 ring-1 ring-latte-300 transition-colors duration-200 select-none hover:bg-latte-100 has-focus-visible:ring-2 has-focus-visible:ring-espresso-700">
-      <span className="text-xs font-medium text-roast-500">{label}</span>
-      <span className="font-semibold text-espresso-950 tabular-nums">
-        {formatCafeDayShort(value)}, {value.slice(0, 4)}
-      </span>
-      <input
-        type="date"
-        aria-label={`${label} date`}
-        value={value}
-        max={max}
-        onClick={(event) => {
-          try {
-            event.currentTarget.showPicker();
-          } catch {
-            // Not supported here; the browser's own tap handling still works.
-          }
-        }}
-        // Clearing the field gives "", which is ignored.
-        onChange={(event) => {
-          if (isCafeDay(event.target.value) && event.target.value <= max) onChange(event.target.value);
-        }}
-        className="absolute inset-0 cursor-pointer opacity-0"
-      />
-    </label>
   );
 }

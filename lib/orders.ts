@@ -87,27 +87,60 @@ type OrderRow = {
  * Every order paid on one cafe day ("2026-11-13"), newest first.
  * Returns null if Supabase couldn't be reached or refused.
  */
-export async function getOrdersForDay(day: string): Promise<SavedOrder[] | null> {
-  const { start, end } = cafeDayRange(day);
+export function getOrdersForDay(day: string): Promise<SavedOrder[] | null> {
+  return getOrdersBetween(day, day);
+}
+
+// Supabase sends back at most 1,000 rows per request (the project's "Max
+// rows" setting), so a long range is loaded in pages of this many.
+const PAGE_SIZE = 1000;
+
+/**
+ * Every order paid from one cafe day to another (both included), newest
+ * first, however many there are. For the summary, whose totals need them all.
+ * Returns null if Supabase couldn't be reached or refused.
+ */
+export async function getOrdersBetween(from: string, to: string): Promise<SavedOrder[] | null> {
+  const start = cafeDayRange(from).start;
+  const end = cafeDayRange(to).end;
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select(ORDER_COLUMNS)
-    .gte("created_at", start)
-    .lt("created_at", end)
-    .order("created_at", { ascending: false })
-    // Each order's lines in bill order: 1, 2, 3...
-    .order("line_no", { referencedTable: "order_items", ascending: true })
-    // Supabase doesn't know our tables' types, so tell it what comes back.
-    .overrideTypes<OrderRow[], { merge: false }>();
+  const orders: SavedOrder[] = [];
+  // How many orders there are, counted by the database with the first page.
+  let total = Number.POSITIVE_INFINITY;
 
-  if (error) {
-    console.error("Loading orders failed:", error.message);
-    return null;
+  while (orders.length < total) {
+    const { data, error, count } = await supabase
+      .from("orders")
+      // count: "exact" also asks how many orders match, so the loop knows
+      // when it has them all, even if Supabase sends fewer than PAGE_SIZE.
+      .select(ORDER_COLUMNS, { count: orders.length === 0 ? "exact" : undefined })
+      .gte("created_at", start)
+      .lt("created_at", end)
+      // Oldest first while loading: an order paid meanwhile lands at the
+      // end, so it can't push one onto the next page and load it twice.
+      // id breaks ties between orders paid at the same moment.
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      // Each order's lines in bill order: 1, 2, 3...
+      .order("line_no", { referencedTable: "order_items", ascending: true })
+      // Rows from this position to the end of the page (counted from 0).
+      .range(orders.length, orders.length + PAGE_SIZE - 1)
+      // Supabase doesn't know our tables' types, so tell it what comes back.
+      .overrideTypes<OrderRow[], { merge: false }>();
+
+    if (error) {
+      console.error("Loading orders failed:", error.message);
+      return null;
+    }
+
+    if (count !== null) total = count;
+    // Nothing more came back: stop, rather than ask forever.
+    if (data.length === 0) break;
+    orders.push(...data.map(toSavedOrder));
   }
 
-  return data.map(toSavedOrder);
+  return orders.reverse();
 }
 
 /** Search results, newest first. hasMore: there were more than MAX_SEARCH_RESULTS. */
