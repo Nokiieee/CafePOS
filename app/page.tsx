@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { PiCoffeeBeanFill, PiWarningCircleFill } from "react-icons/pi";
 import { login } from "@/actions/auth";
+import { SignInButton } from "@/components/login/sign-in-button";
 
 const inputClass =
   "h-12 rounded-2xl border border-roast-400 bg-white px-4 text-espresso-950 caret-espresso-700 outline-none transition-colors duration-200 hover:border-espresso-600 focus:border-espresso-700 focus:ring-2 focus:ring-espresso-700/20";
@@ -67,12 +68,8 @@ export default function LoginPage({ searchParams }: PageProps<"/">) {
             <ErrorMessage searchParams={searchParams} />
           </Suspense>
 
-          <button
-            type="submit"
-            className="h-12 rounded-2xl bg-espresso-700 font-semibold text-milk transition-colors duration-200 outline-none hover:bg-espresso-800 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk active:bg-espresso-900"
-          >
-            Sign in
-          </button>
+          {/* Shows "Signing in…" while the form is being sent. */}
+          <SignInButton />
         </form>
       </div>
     </main>
