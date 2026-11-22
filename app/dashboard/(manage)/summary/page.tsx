@@ -5,7 +5,13 @@ import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
 import { SummaryToolbar } from "@/components/summary/summary-toolbar";
 import { SummaryEmpty, SummarySkeleton, SummaryView } from "@/components/summary/summary-view";
 import { requireAdmin } from "@/lib/auth";
-import { cafeDayFromParam, cafeToday, formatCafeDay, formatCafeTime } from "@/lib/cafe-time";
+import {
+  cafeDayFromParam,
+  cafeToday,
+  formatCafeDay,
+  formatCafeDayShort,
+  formatCafeTime,
+} from "@/lib/cafe-time";
 import { dayCount, filterDays, parseDates } from "@/lib/date-range";
 import { getOrdersBetween } from "@/lib/orders";
 import { MAX_SUMMARY_DAYS, summarizeOrders } from "@/lib/summary";
@@ -102,8 +108,16 @@ async function SummaryContent({ searchParams }: SummaryContentProps) {
       ) : orders.length === 0 ? (
         <SummaryEmpty shown={isRange ? "range" : day === today ? "today" : "day"} />
       ) : (
-        // In a range, voids show their date as well as the time.
-        <SummaryView summary={summarizeOrders(orders)} showDates={isRange} />
+        <SummaryView
+          summary={summarizeOrders(orders)}
+          // In a range, voids show their date as well as the time.
+          showDates={isRange}
+          datesLabel={
+            isRange
+              ? `${formatCafeDayShort(from)} – ${formatCafeDayShort(to)}`
+              : formatCafeDay(day)
+          }
+        />
       )}
     </section>
   );
