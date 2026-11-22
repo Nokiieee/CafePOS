@@ -2,16 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DayPicker } from "@/components/orders/day-picker";
 import { SignedInAs, SignedInAsFallback } from "@/components/pos/signed-in-as";
+import { SummaryToolbar } from "@/components/summary/summary-toolbar";
 import { SummaryEmpty, SummarySkeleton, SummaryView } from "@/components/summary/summary-view";
 import { requireAdmin } from "@/lib/auth";
-import {
-  cafeDayFromParam,
-  cafeToday,
-  formatCafeDay,
-  formatCafeDayShort,
-  formatCafeTime,
-} from "@/lib/cafe-time";
-import { dayCount, filterDays, parseDates, rangeLabel } from "@/lib/date-range";
+import { cafeDayFromParam, cafeToday, formatCafeDay, formatCafeTime } from "@/lib/cafe-time";
+import { dayCount, filterDays, parseDates } from "@/lib/date-range";
 import { getOrdersBetween } from "@/lib/orders";
 import { MAX_SUMMARY_DAYS, summarizeOrders } from "@/lib/summary";
 
@@ -82,16 +77,12 @@ async function SummaryContent({ searchParams }: SummaryContentProps) {
       </h2>
 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        {isRange ? (
-          <p className="flex h-12 items-center gap-2 whitespace-nowrap">
-            <span className="font-semibold text-espresso-950">{rangeLabel(dates)}</span>
-            <span className="text-roast-500 tabular-nums">
-              {formatCafeDayShort(from)} – {formatCafeDayShort(to)}
-            </span>
-          </p>
-        ) : (
-          <DayPicker basePath="/dashboard/summary" day={day} today={today} />
-        )}
+        <SummaryToolbar
+          dayPicker={<DayPicker basePath="/dashboard/summary" day={day} today={today} />}
+          dates={dates}
+          day={day}
+          today={today}
+        />
         {includesToday && (
           <p className="text-roast-500 tabular-nums">
             {isRange ? "Includes today so far" : "So far today"}, as of{" "}
@@ -111,7 +102,8 @@ async function SummaryContent({ searchParams }: SummaryContentProps) {
       ) : orders.length === 0 ? (
         <SummaryEmpty shown={isRange ? "range" : day === today ? "today" : "day"} />
       ) : (
-        <SummaryView summary={summarizeOrders(orders)} />
+        // In a range, voids show their date as well as the time.
+        <SummaryView summary={summarizeOrders(orders)} showDates={isRange} />
       )}
     </section>
   );

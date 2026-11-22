@@ -131,3 +131,14 @@ export function writeDates(
     params.set("to", dates.to);
   }
 }
+
+/**
+ * A page's address with only dates in it, like "/dashboard/summary?range=7d",
+ * or the bare page for today. day: the day shown when the range is "day".
+ */
+export function datesUrl(path: string, dates: DateChoice, day: string, today: string): string {
+  const params = new URLSearchParams();
+  writeDates(params, dates, day, today);
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}

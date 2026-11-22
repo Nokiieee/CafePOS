@@ -2,9 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
-import { PiCalendarBlank, PiSlidersHorizontal } from "react-icons/pi";
-import { formatCafeDayShort } from "@/lib/cafe-time";
-import { filterDays, rangeLabel } from "@/lib/date-range";
+import { PiSlidersHorizontal } from "react-icons/pi";
 import {
   activeFilterCount,
   DEFAULT_FILTERS,
@@ -13,6 +11,7 @@ import {
 } from "@/lib/order-search";
 import { OrderFiltersDialog } from "./order-filters";
 import { OrderSearchBox } from "./order-search";
+import { RangeButton } from "./range-button";
 
 type OrdersToolbarProps = {
   /** The day picker, shown while the Dates filter is the one day. */
@@ -49,7 +48,6 @@ export function OrdersToolbar({
   const count = activeFilterCount(filters);
   // A range of days (7 days, 30 days...) instead of the one day.
   const isRange = filters.range !== "day";
-  const days = filterDays(filters, today, day);
 
   function search(text: string, nextFilters: OrderFilters) {
     // A range has no single day, so leaving one comes back to today.
@@ -77,18 +75,7 @@ export function OrdersToolbar({
         {isRange ? (
           // In results, the days searched take the day picker's place.
           // Tapping them opens the filters, where the dates are picked.
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            onClick={openFilters}
-            className="flex h-12 shrink-0 items-center gap-2 rounded-2xl bg-white px-4 whitespace-nowrap ring-1 ring-latte-300 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
-          >
-            <PiCalendarBlank aria-hidden className="size-5 text-espresso-700" />
-            <span className="font-semibold text-espresso-950">{rangeLabel(filters)}</span>
-            <span className="text-roast-500 tabular-nums">
-              {formatCafeDayShort(days.from)} – {formatCafeDayShort(days.to)}
-            </span>
-          </button>
+          <RangeButton dates={filters} today={today} onClick={openFilters} />
         ) : (
           dayPicker
         )}

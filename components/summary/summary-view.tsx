@@ -1,13 +1,19 @@
 import type { ReactNode } from "react";
 import { PiChartBar } from "react-icons/pi";
-import { formatCafeTime } from "@/lib/cafe-time";
+import { cafeDayOf, formatCafeDayShort, formatCafeTime } from "@/lib/cafe-time";
 import { formatPrice } from "@/lib/format-price";
 import type { OrdersSummary } from "@/lib/summary";
 
-// The end-of-day summary's sections: the four headline numbers, then what
-// sold on the left and the breakdowns on the right (one column on phones).
-// Nothing here can be tapped, so it's drawn on the server.
-export function SummaryView({ summary }: { summary: OrdersSummary }) {
+type SummaryViewProps = {
+  summary: OrdersSummary;
+  /** A range of days: voids show their date as well as the time. */
+  showDates?: boolean;
+};
+
+// The summary's sections, for one day or a range: the four headline numbers,
+// then what sold on the left and the breakdowns on the right (one column on
+// phones). Nothing here can be tapped, so it's drawn on the server.
+export function SummaryView({ summary, showDates = false }: SummaryViewProps) {
   return (
     <div className="flex flex-col gap-6">
       <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -22,7 +28,7 @@ export function SummaryView({ summary }: { summary: OrdersSummary }) {
         <div className="flex flex-col gap-6">
           <OrderTypesCard orderTypes={summary.orderTypes} />
           <CashiersCard cashiers={summary.cashiers} />
-          <VoidsCard voids={summary.voids} />
+          <VoidsCard voids={summary.voids} showDates={showDates} />
         </div>
       </div>
     </div>
@@ -163,7 +169,12 @@ function CashiersCard({ cashiers }: { cashiers: OrdersSummary["cashiers"] }) {
   );
 }
 
-function VoidsCard({ voids }: { voids: OrdersSummary["voids"] }) {
+type VoidsCardProps = {
+  voids: OrdersSummary["voids"];
+  showDates: boolean;
+};
+
+function VoidsCard({ voids, showDates }: VoidsCardProps) {
   const count = voids.orders.length;
 
   return (
@@ -179,6 +190,8 @@ function VoidsCard({ voids }: { voids: OrdersSummary["voids"] }) {
             <li key={order.id} className="py-2.5">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="font-medium tabular-nums">
+                  {/* "Nov 15, 2:13 PM" in a range; just the time for one day. */}
+                  {showDates && `${formatCafeDayShort(cafeDayOf(order.createdAt))}, `}
                   {formatCafeTime(order.createdAt)} · {order.cashierName}
                 </span>
                 {/* Crossed out, as on the Orders page: it isn't a sale. */}
