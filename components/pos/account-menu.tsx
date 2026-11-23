@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { PiCaretDown, PiSignOut, PiUserFill } from "react-icons/pi";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { PiCaretDown, PiSignOut, PiSpinnerGap, PiUserFill } from "react-icons/pi";
 import { logout } from "@/actions/auth";
 import type { Role } from "@/lib/auth";
 
@@ -20,10 +20,16 @@ export function AccountMenu({ name, role }: AccountMenuProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
+  // Runs logout() for the Sign out form. isSigningOut stays true until the
+  // login page has loaded (logout ends by going there), so the whole menu
+  // knows a sign-out is on its way, not just the button.
+  const [, signOut, isSigningOut] = useActionState(logout, undefined);
 
   // While the menu is open, close it on a tap outside or the Escape key.
+  // Not while signing out: the menu stays open so "Signing out…" stays in
+  // view until the login page appears.
   useEffect(() => {
-    if (!open) return;
+    if (!open || isSigningOut) return;
 
     function handlePointerDown(event: PointerEvent) {
       if (!containerRef.current?.contains(event.target as Node)) {
@@ -44,7 +50,7 @@ export function AccountMenu({ name, role }: AccountMenuProps) {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, isSigningOut]);
 
   return (
     <div ref={containerRef} className="relative">
@@ -53,7 +59,10 @@ export function AccountMenu({ name, role }: AccountMenuProps) {
         type="button"
         aria-expanded={open}
         aria-controls={menuId}
-        onClick={() => setOpen((isOpen) => !isOpen)}
+        onClick={() => {
+          // The name button can't close the menu while signing out either.
+          if (!isSigningOut) setOpen((isOpen) => !isOpen);
+        }}
         className="flex h-11 max-w-full items-center gap-2.5 rounded-xl bg-espresso-700/80 px-4 text-milk border border-white/20 shadow-[inset_0_1px_0_rgb(255_255_255/0.25)] backdrop-blur-md transition-colors duration-200 outline-none hover:bg-espresso-800/85 focus-visible:ring-2 focus-visible:ring-espresso-700 focus-visible:ring-offset-2 focus-visible:ring-offset-milk active:bg-espresso-900/90"
       >
         <PiUserFill aria-hidden className="size-5 shrink-0" />
@@ -79,13 +88,28 @@ export function AccountMenu({ name, role }: AccountMenuProps) {
           </div>
           <hr className="mx-1.5 mb-1.5 border-latte-200" />
 
-          <form action={logout}>
+          <form action={signOut}>
+            {/* While signing out: a spinner in place of the door, and
+                disabled so a second tap can't sign out twice. It keeps its
+                light highlight (no faded disabled look), like Signing in…. */}
             <button
               type="submit"
-              className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-medium text-espresso-900 transition-colors duration-200 outline-none hover:bg-latte-100 focus-visible:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 active:bg-latte-200"
+              disabled={isSigningOut}
+              className={`flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-medium text-espresso-900 transition-colors duration-200 outline-none focus-visible:bg-latte-100 focus-visible:ring-2 focus-visible:ring-espresso-700 ${
+                isSigningOut ? "cursor-wait bg-latte-100" : "hover:bg-latte-100 active:bg-latte-200"
+              }`}
             >
-              <PiSignOut aria-hidden className="size-5" />
-              Sign out
+              {isSigningOut ? (
+                <>
+                  <PiSpinnerGap aria-hidden className="size-5 animate-spin motion-reduce:animate-none" />
+                  Signing out…
+                </>
+              ) : (
+                <>
+                  <PiSignOut aria-hidden className="size-5" />
+                  Sign out
+                </>
+              )}
             </button>
           </form>
         </div>
