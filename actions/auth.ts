@@ -30,7 +30,10 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // "local" ends only this device's session (Supabase forgets it and the
+  // cookies are deleted). Other devices on the same account stay signed in.
+  // The default, "global", would sign the account out everywhere.
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/");
 }
 
