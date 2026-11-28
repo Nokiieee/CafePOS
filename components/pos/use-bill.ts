@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   billItemCount,
   billTotal,
-  createBillId,
   createLine,
   type BillLine,
   type ItemChoice,
@@ -16,7 +15,6 @@ import { MAX_QUANTITY } from "./item-options";
 // Called once, in BillProvider (bill-provider.tsx). Everything else reads the
 // bill with useCurrentBill().
 export function useBill() {
-  const [id, setId] = useState<string | null>(null);
   const [lines, setLines] = useState<BillLine[]>([]);
   const [orderType, setOrderType] = useState<OrderType>("dine-in");
   // A new object on every add, so the panel can scroll even to the same row.
@@ -24,10 +22,6 @@ export function useBill() {
 
   function add(choice: ItemChoice) {
     const line = createLine(choice);
-
-    // The first item starts a new bill.
-    if (!id) setId(createBillId());
-
     const existing = lines.find((l) => l.key === line.key);
     setLines(
       existing
@@ -42,23 +36,19 @@ export function useBill() {
   }
 
   function changeQuantity(key: string, change: number) {
-    const next = lines
-      .map((l) => (l.key === key ? { ...l, quantity: l.quantity + change } : l))
-      .filter((l) => l.quantity > 0);
-
-    setLines(next);
-    // Removing the last row ends the bill.
-    if (next.length === 0) setId(null);
+    setLines(
+      lines
+        .map((l) => (l.key === key ? { ...l, quantity: l.quantity + change } : l))
+        .filter((l) => l.quantity > 0),
+    );
   }
 
   function clear() {
     setLines([]);
-    setId(null);
     setOrderType("dine-in");
   }
 
   return {
-    id,
     lines,
     orderType,
     lastAdded,

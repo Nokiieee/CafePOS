@@ -77,26 +77,6 @@ export function billItemCount(lines: BillLine[]): number {
   return lines.reduce((count, line) => count + line.quantity, 0);
 }
 
-// Letters and numbers that are hard to mix up: no 0/O, 1/I/L.
-const ID_CHARACTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-// A short ID like "1106-K7QF": the month and day, then 4 random characters.
-// This is temporary. A true running number (#1, #2, #3) needs orders saved in
-// the database, so it can replace this when orders are stored in Supabase.
-export function createBillId(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-
-  const random = crypto.getRandomValues(new Uint32Array(4));
-  const code = Array.from(
-    random,
-    (value) => ID_CHARACTERS[value % ID_CHARACTERS.length],
-  ).join("");
-
-  return `${month}${day}-${code}`;
-}
-
 // A random id in the standard UUID format, made when Charge opens. It goes
 // with the order to Supabase, and a retry sends the same one, so the same
 // payment can't be saved twice.
