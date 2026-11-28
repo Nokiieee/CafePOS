@@ -60,15 +60,10 @@ export function BillPanel({ bill, onCharge }: BillPanelProps) {
         }`}
       >
         <div className="flex flex-col gap-4 px-5 pt-6 pb-4">
-          <div className="flex min-h-11 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-xl leading-tight font-semibold tracking-tight">
-                Current bill
-              </h2>
-              <p className="mt-0.5 text-sm text-roast-500 tabular-nums">
-                {bill.id ? `#${bill.id}` : "New bill"}
-              </p>
-            </div>
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <h2 className="min-w-0 text-xl leading-tight font-semibold tracking-tight">
+              Current bill
+            </h2>
             <div className="flex shrink-0 items-center gap-1">
               {!isEmpty && <ClearButton onClear={bill.clear} />}
               <button
